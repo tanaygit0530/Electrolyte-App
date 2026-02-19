@@ -23,7 +23,8 @@ exports.processChat = async (req, res) => {
       });
     }
 
-    const userMessage = req.body.message;
+    const { message: userMessage } = req.body;
+    let { sessionId } = req.body;
 
     if (!userMessage) {
       return res.status(400).json({
@@ -33,7 +34,31 @@ exports.processChat = async (req, res) => {
 
     console.log("User Message:", userMessage);
 
-    // 2. Initialize Gemini (using @google/genai and gemini-flash-latest)
+    // 2. Handle Session
+    if (!sessionId) {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('chat_sessions')
+        .insert([{ title: userMessage.substring(0, 30) + (userMessage.length > 30 ? '...' : '') }])
+        .select()
+        .single();
+      
+      if (sessionError) {
+        console.error("Session Create Error:", sessionError);
+      } else {
+        sessionId = sessionData.id;
+      }
+    }
+
+    // 3. Save User Message
+    if (sessionId) {
+      await supabase.from('chat_messages').insert([
+        { session_id: sessionId, role: 'user', content: userMessage }
+      ]);
+      // Update session timestamp
+      await supabase.from('chat_sessions').update({ updated_at: new Date() }).eq('id', sessionId);
+    }
+
+    // 4. Initialize Gemini
     const result = await ai.models.generateContent({
       model: "gemini-flash-latest",
       contents: `
@@ -50,77 +75,62 @@ Message: "${userMessage}"
 `
     });
 
-    let extracted = {
-      part_code: "",
-      part_name: "",
-      model: ""
-    };
+    let extracted = { part_code: "", part_name: "", model: "" };
+    let replyMessage = "";
 
-    // 3. Safe JSON Parsing
+    // 5. Safe JSON Parsing
     try {
       let responseText = result.text;
-      console.log("Gemini Raw Response:", responseText);
-
-      // Clean potential markdown blocks
       if (responseText.includes("```json")) {
         responseText = responseText.split("```json")[1].split("```")[0].trim();
       } else if (responseText.includes("```")) {
         responseText = responseText.split("```")[1].split("```")[0].trim();
       }
-      
       extracted = JSON.parse(responseText);
-      console.log("Parsed Intent:", extracted);
     } catch (jsonError) {
-      console.log("JSON parse error:", jsonError, "Raw text:", result.text);
-      return res.json({
-        reply: "Sorry, I couldn't understand that. Please try to specify a part name or code."
-      });
+      console.log("JSON parse error:", jsonError);
     }
 
-    // 4. Query Supabase
+    // 6. Query Supabase for parts
     let query = supabase.from("spare_parts").select("*");
+    let hasQuery = false;
 
     if (extracted.part_code) {
       query = query.eq('part_code', extracted.part_code);
+      hasQuery = true;
     } else if (extracted.part_name) {
       query = query.ilike('part_name', `%${extracted.part_name}%`);
+      hasQuery = true;
     } else if (extracted.model) {
       query = query.ilike('model', `%${extracted.model}%`);
+      hasQuery = true;
+    }
+
+    if (!hasQuery) {
+      replyMessage = "I'm here to help with spare parts. Could you please specify a part name, code, or model?";
     } else {
-      return res.json({
-        reply: "Please mention part code, name, or model so I can help you better."
-      });
+      const { data: parts, error: partsError } = await query;
+      if (partsError) {
+        replyMessage = "Sorry, I had trouble checking the inventory.";
+      } else if (!parts || parts.length === 0) {
+        replyMessage = "No matching spare part found in our database.";
+      } else {
+        parts.forEach(part => {
+          replyMessage += `Part Name: ${part.part_name}\nModel: ${part.model}\nPrice: ₹${part.price}\nStock: ${part.stock_quantity}\nStatus: ${part.status}\n\n`;
+        });
+      }
     }
 
-    const { data: parts, error } = await query;
+    replyMessage = replyMessage.trim();
 
-    if (error) {
-      console.log("Supabase error:", error);
-      return res.status(500).json({
-        reply: "Database error occurred while checking inventory."
-      });
+    // 7. Save AI Response
+    if (sessionId) {
+      await supabase.from('chat_messages').insert([
+        { session_id: sessionId, role: 'assistant', content: replyMessage }
+      ]);
     }
 
-    // 5. Build Reply Message
-    if (!parts || parts.length === 0) {
-      return res.json({
-        reply: "No matching spare part found in our database."
-      });
-    }
-
-    let replyMessage = "";
-    parts.forEach(part => {
-      replyMessage += `
-Part Name: ${part.part_name}
-Model: ${part.model}
-Price: ₹${part.price}
-Stock: ${part.stock_quantity}
-Status: ${part.status}
-`;
-    });
-
-    console.log("Sending successful reply");
-    res.json({ reply: replyMessage.trim() });
+    res.json({ reply: replyMessage, sessionId: sessionId });
 
   } catch (err) {
     console.error("SERVER ERROR:", err);
@@ -129,3 +139,34 @@ Status: ${part.status}
     });
   }
 };
+
+exports.getSessions = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('chat_sessions')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Get Sessions Error:", err);
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+};
+
+exports.getSessionMessages = async (req, res) => {
+  const { sessionId } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Get Messages Error:", err);
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
+};
+

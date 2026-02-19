@@ -13,12 +13,18 @@ class ChatMessage {
 class ChatProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   final List<ChatMessage> _messages = [];
+  String? _currentSessionId;
   bool _isLoading = false;
 
   List<ChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
+  String? get currentSessionId => _currentSessionId;
 
   ChatProvider() {
+    _showGreeting();
+  }
+
+  void _showGreeting() {
     _messages.add(
       ChatMessage(
         text:
@@ -31,16 +37,22 @@ class ChatProvider with ChangeNotifier {
   Future<void> handleUserInput(String input) async {
     if (input.trim().isEmpty) return;
 
-    // Add user message
     _messages.add(ChatMessage(text: input, isUser: true));
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Get AI response from backend
-      final reply = await _apiService.getChatResponse(input);
+      final response = await _apiService.getChatResponse(
+        input,
+        sessionId: _currentSessionId,
+      );
+      final reply = response['reply'] as String;
+      final newSessionId = response['sessionId'] as String?;
 
-      // Add bot message
+      if (_currentSessionId == null && newSessionId != null) {
+        _currentSessionId = newSessionId;
+      }
+
       _messages.add(ChatMessage(text: reply, isUser: false));
     } catch (e) {
       _messages.add(
@@ -56,11 +68,43 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
+  Future<void> loadSession(String sessionId) async {
+    _isLoading = true;
+    _currentSessionId = sessionId;
+    _messages.clear();
+    notifyListeners();
+
+    try {
+      final data = await _apiService.getSessionMessages(sessionId);
+      for (var msg in data) {
+        _messages.add(
+          ChatMessage(
+            text: msg['content'],
+            isUser: msg['role'] == 'user',
+            timestamp: DateTime.parse(msg['created_at']),
+          ),
+        );
+      }
+    } catch (e) {
+      _messages.add(
+        ChatMessage(text: "Failed to load chat history.", isUser: false),
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void startNewChat() {
+    _currentSessionId = null;
+    _messages.clear();
+    _showGreeting();
+    notifyListeners();
+  }
+
   void clearChat() {
     _messages.clear();
-    _messages.add(
-      ChatMessage(text: "Chat cleared. How can I help you now?", isUser: false),
-    );
+    _showGreeting();
     notifyListeners();
   }
 }

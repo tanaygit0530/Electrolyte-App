@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../models/spare_part.dart';
+import '../theme/app_theme.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -9,8 +12,14 @@ class BillingScreen extends StatefulWidget {
 
 class _BillingScreenState extends State<BillingScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _apiService = ApiService();
   String _warrantyType = 'Out of Warranty (OW)';
   String _brand = 'Select Brand';
+
+  List<SparePart> _searchResults = [];
+  SparePart? _selectedPart;
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +76,37 @@ class _BillingScreenState extends State<BillingScreen> {
               ),
               const SizedBox(height: 8),
               _buildSearchField(),
+              if (_isSearching)
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              if (_searchResults.isNotEmpty)
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final part = _searchResults[index];
+                      return ListTile(
+                        title: Text(part.partName),
+                        subtitle: Text("${part.partCode} - ${part.model}"),
+                        trailing: Text("₹${part.price}"),
+                        onTap: () {
+                          setState(() {
+                            _selectedPart = part;
+                            _searchResults = [];
+                            _searchController.text = part.partName;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
 
               const SizedBox(height: 16),
               const Text(
@@ -74,6 +114,28 @@ class _BillingScreenState extends State<BillingScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const Divider(),
+              if (_selectedPart != null)
+                Card(
+                  color: AppTheme.primaryYellow.withValues(alpha: 0.1),
+                  child: ListTile(
+                    title: Text(_selectedPart!.partName),
+                    subtitle: Text(
+                      "${_selectedPart!.partCode} | ₹${_selectedPart!.price}",
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () => setState(() => _selectedPart = null),
+                    ),
+                  ),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    "No product selected",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
 
               _buildTextField(
                 "Serial Number",
@@ -190,12 +252,51 @@ class _BillingScreenState extends State<BillingScreen> {
         border: Border.all(color: Colors.grey),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const TextField(
+      child: TextField(
+        controller: _searchController,
         decoration: InputDecoration(
           hintText: "Enter product name or ID",
-          prefixIcon: Icon(Icons.search),
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchResults = []);
+                  },
+                )
+              : null,
           border: InputBorder.none,
         ),
+        onChanged: (value) async {
+          if (value.length > 2) {
+            setState(() => _isSearching = true);
+            try {
+              // We'll reuse getParts for broad search or add a search method
+              // For now, let's fetch all and filter locally or add a backend search
+              final all = await _apiService.getAllParts();
+              setState(() {
+                _searchResults = all
+                    .where(
+                      (p) =>
+                          p.partName.toLowerCase().contains(
+                            value.toLowerCase(),
+                          ) ||
+                          p.partCode.toLowerCase().contains(
+                            value.toLowerCase(),
+                          ),
+                    )
+                    .toList();
+              });
+            } catch (e) {
+              debugPrint("Search error: $e");
+            } finally {
+              setState(() => _isSearching = false);
+            }
+          } else {
+            setState(() => _searchResults = []);
+          }
+        },
       ),
     );
   }

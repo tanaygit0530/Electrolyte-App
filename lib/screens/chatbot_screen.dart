@@ -52,7 +52,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_box_outlined),
-            onPressed: () {},
+            onPressed: () {
+              context.read<ChatProvider>().startNewChat();
+            },
           ),
         ],
       ),

@@ -4,6 +4,8 @@ import 'theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/order_provider.dart';
+import 'providers/chat_history_provider.dart';
+import 'providers/navigation_provider.dart';
 import 'screens/main_screen.dart';
 
 void main() {
@@ -13,6 +15,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => ChatHistoryProvider()),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
       ],
       child: const SparePartsApp(),
     ),

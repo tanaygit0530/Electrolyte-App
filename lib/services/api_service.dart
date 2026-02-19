@@ -51,22 +51,44 @@ class ApiService {
     }
   }
 
-  Future<String> getChatResponse(String message) async {
+  Future<Map<String, dynamic>> getChatResponse(
+    String message, {
+    String? sessionId,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/chat'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'message': message}),
+        body: json.encode({'message': message, 'sessionId': sessionId}),
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['reply'] ?? "I'm sorry, I couldn't process that.";
+        return json.decode(response.body);
       } else {
-        return "Error: ${response.statusCode}. Please try again later.";
+        throw Exception("Error: ${response.statusCode}");
       }
     } catch (e) {
-      return "Network error. Please check your connection.";
+      throw Exception("Network error. Please check your connection.");
+    }
+  }
+
+  Future<List<dynamic>> getChatSessions() async {
+    final response = await http.get(Uri.parse('$baseUrl/chat/sessions'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load chat history');
+    }
+  }
+
+  Future<List<dynamic>> getSessionMessages(String sessionId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/chat/sessions/$sessionId/messages'),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load messages');
     }
   }
 }

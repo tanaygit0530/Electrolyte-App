@@ -30,3 +30,19 @@ VALUES
 ('Display Panel', 'DISP9988', 'Ultra-V', 4500.50, 2, 'Low'),
 ('Power Supply Unit', 'PSU5566', 'Universal', 1200.00, 15, 'Available'),
 ('Cooling Fan', 'FAN1122', 'Compact', 350.00, 0, 'Out of Stock');
+-- Create chat_sessions table to group messages
+CREATE TABLE chat_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT DEFAULT 'New Chat',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create chat_messages table to store individual chat interactions
+CREATE TABLE chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL, -- 'user' or 'assistant'
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

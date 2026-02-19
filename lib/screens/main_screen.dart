@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/order_provider.dart';
+import '../providers/navigation_provider.dart';
 import 'chatbot_screen.dart';
 import 'history_screen.dart';
 import 'billing_screen.dart';
@@ -13,7 +16,13 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OrderProvider>().fetchOrders();
+    });
+  }
 
   final List<Widget> _screens = [
     const ChatbotScreen(),
@@ -25,11 +34,14 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.watch<NavigationProvider>();
+
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      body: IndexedStack(index: navProvider.selectedIndex, children: _screens),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        currentIndex: navProvider.selectedIndex,
+        onTap: (index) => navProvider.setIndex(index),
+
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xFFFFC107),
         unselectedItemColor: Colors.grey,
