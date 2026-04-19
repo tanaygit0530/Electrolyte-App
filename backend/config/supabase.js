@@ -8,6 +8,8 @@ if (!supabaseUrl || !supabaseKey) {
   console.error('Missing Supabase URL or Key in .env file');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = (supabaseUrl && supabaseKey) 
+  ? createClient(supabaseUrl, supabaseKey) 
+  : null;
 
 module.exports = supabase;

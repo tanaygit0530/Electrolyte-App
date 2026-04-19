@@ -6,7 +6,7 @@ import '../models/order.dart';
 class ApiService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator or web
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator or web
-  static const String baseUrl = 'http://10.0.2.2:5001';
+  static const String baseUrl = 'http://192.168.1.35:5001';
 
   Future<List<SparePart>> getAllParts() async {
     final response = await http.get(Uri.parse('$baseUrl/parts'));

@@ -1,0 +1,97 @@
+
+
+This report details the architectural design, technical implementation, and functional workflows of the specific codebase provided (Electrolyte-App).
+
+### **1. Executive Summary**
+The "Electrolyte-App" is a full-stack cross-platform application designed for **Spare Parts Management** and **AI-Assisted Customer Support**. It allows users to browse inventory, place orders, and interact with an AI chatbot (powered by Google Gemini) that has context about the parts catalog.
+
+### **2. High-Level Architecture**
+The system follows a standard **Client-Server** architecture:
+
+*   **Mobile Client (Flutter)**: Handles UI, state management, and user interactions.
+*   **API Server (Node.js/Express)**: Business logic, AI integration, and data processing.
+*   **Database (Supabase/PostgreSQL)**: Relational data storage for parts, orders, and chat history.
+*   **AI Service (Google Gemini)**: Natural language processing for the chatbot.
+
+---
+
+### **3. Backend Implementation (Node.js)**
+**Path:** backend
+
+The backend is a RESTful API built with **Express.js**. It exposes endpoints for three main domains: Parts, Orders, and Chat.
+
+#### **A. Database Schema (Supabase)**
+The application uses a relational design with four core tables:
+1.  **`spare_parts`**: Inventory catalog (ID, Name, Model, Price, Stock, Status).
+2.  **`orders`**: Sales records (linked to parts via `part_code`).
+3.  **`chat_sessions`**: Groups messages into conversation threads.
+4.  **`chat_messages`**: Individual messages (Role: 'user' or 'assistant') linked to a session.
+
+#### **B. API Endpoints**
+| Domain | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Chat** | `POST` | `/chat` | Sends user message to Gemini. If `session_id` is null, creates a new session. |
+| | `GET` | `/chat/sessions` | Retrieves list of past conversation threads. |
+| | `GET` | `/chat/sessions/:id/messages` | Helper to fetch full history of a specific chat. |
+| **Parts** | `GET` | `/parts` | Fetches full inventory. |
+| | `GET` | `/parts/:code` | Fetches details for a specific part code. |
+| **Orders** | `POST` | `/order` | Creates a new order. **Logic**: Checks stock level -> Deducts quantity -> Calculates GST (18%) -> Saves order. |
+| | `GET` | `/orders` | Fetches order history (newest first). |
+
+#### **C. Key Logic**
+*   **AI Context**: The chat controller injects system instructions into Gemini, likely giving it "knowledge" about the spare parts domain so it can answer technical questions.
+*   **Inventory Control**: The order controller prevents orders if `quantity_requested > stock_quantity`.
+
+---
+
+### **4. Frontend Implementation (Flutter)**
+**Path:** lib
+
+The frontend is a Flutter application using **Provider** for state management. It is structured to be responsive and theme-aware.
+
+#### **A. State Management (Provider)**
+The app uses a decentralized state pattern with specific providers for each feature domain:
+*   **`ChatProvider`**: Handles the active chat session, sending messages, and loading/error states.
+*   **`ChatHistoryProvider`**: Manages the list of past conversations (sidebar/history view).
+*   **`OrderProvider`**: Manages the fetching and display of placed orders.
+*   **`NavigationProvider`**: Controls the bottom navigation bar state.
+*   **`ThemeProvider`**: Toggles between Light and Dark modes.
+
+#### **B. Key Screens**
+1.  **Chat Screen (`chatbot_screen.dart`)**: The core interface. Displays message bubbles, input field, and integrates with the backend to send/receive AI responses.
+2.  **History Screen (`history_screen.dart`)**: Lists past chat sessions.
+3.  **Alerts/Billing/Profile**: Currently serve as functional placeholders or secondary features.
+4.  **Main Screen (`main_screen.dart`)**: The scaffolding that holds the `BottomNavigationBar` and manages navigation between the screens above.
+
+#### **C. Services**
+*   **`ApiService`**: A dedicated class for HTTP requests. It hardcodes the backend URL (currently set to a local IP `192.168.1.35:5001`, which would need to be updated for production).
+
+---
+
+### **5. Functional Data Flows**
+
+#### **Scenario 1: User Asks a Question**
+1.  User types "Do you have cooling fans?" in `ChatbotScreen`.
+2.  `ChatProvider` calls `ApiService.sendMessage()`.
+3.  **Backend**:
+    *   Receives request at `POST /chat`.
+    *   Saves user message to `chat_messages` table.
+    *   Forwards prompt to **Gemini AI**.
+    *   Receives AI response.
+    *   Saves AI response to `chat_messages` table.
+    *   Returns response to Flutter.
+4.  **Frontend**: Updates UI with the new AI message bubble.
+
+#### **Scenario 2: User Places an Order**
+1.  (Presumably via Chat or dedicated UI) User requests an order.
+2.  Frontend sends `POST /order` with `part_code` and `quantity`.
+3.  **Backend**:
+    *   Queries `spare_parts` to check stock.
+    *   **If valid**: Updates `spare_parts` (decrement stock) -> Inserts into `orders`.
+    *   **If invalid**: Returns 400 Error ("Insufficient stock").
+4.  Frontend displays success or error notification.
+
+### **6. Current Constraints**
+*   **Local Network**: The app is configured for local development (`192.168.1.35`). This must be changed to `localhost` (for emulator with port forwarding) or a hosted URL for real-world use.
+*   **Hardcoded Tax**: GST is hardcoded to 18% in the backend logic.
+*   **No Authentication**: There appears to be no user login/signup flow implemented yet; the system assumes a single-user context or relies on session IDs.
