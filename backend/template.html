@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #eee;
+  margin: 0;
+  padding: 0;
+  -webkit-print-color-adjust: exact;
+}
+
+.page {
+  width: 210mm;
+  height: 297mm;
+  margin: auto;
+  background: #fff;
+  padding: 20px;
+  border: 1px solid #000;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* HEADER */
+.header {
+  text-align: center;
+  position: relative;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #000;
+  padding-bottom: 10px;
+}
+
+.logo-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 70px;
+}
+
+.logo-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 70px;
+}
+
+.header h1 {
+  margin: 0;
+  color: #c41e3a;
+  font-size: 28px;
+  text-transform: uppercase;
+}
+
+.header p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+/* BOX */
+.box {
+  border: 1px solid #000;
+  padding: 0;
+  margin-top: 15px;
+}
+
+.box-header {
+  background: #f0f0f0;
+  border-bottom: 1px solid #000;
+  padding: 5px 10px;
+  font-weight: bold;
+}
+
+.box-content {
+  padding: 10px;
+}
+
+.flex {
+  display: flex;
+  justify-content: space-between;
+}
+
+.flex > div {
+  width: 48%;
+}
+
+/* TABLE */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+th {
+  background: #f0f0f0;
+  border: 1px solid black;
+  padding: 10px 5px;
+  text-align: center;
+  font-size: 14px;
+}
+
+td {
+  border: 1px solid black;
+  padding: 8px;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* TOTAL */
+.total-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.total-table {
+  width: 300px;
+  border-collapse: collapse;
+}
+
+.total-table td {
+  text-align: right;
+  padding: 5px 10px;
+  border: 1px solid #000;
+}
+
+.total-table .bold {
+  font-weight: bold;
+  font-size: 15px;
+  background: #f0f0f0;
+}
+
+/* WORDS */
+.words-section {
+  margin-top: 10px;
+  font-style: italic;
+  font-size: 13px;
+  border: 1px solid #000;
+  padding: 5px 10px;
+}
+
+/* WATERMARK */
+.watermark {
+  position: absolute;
+  opacity: 0.05;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  font-size: 100px;
+  z-index: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+/* FOOTER */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+  align-items: flex-start;
+}
+
+.bank-details {
+  font-size: 12px;
+  border: 1px solid #000;
+  padding: 5px;
+  width: 250px;
+}
+
+.qr-section {
+  text-align: center;
+  width: 120px;
+}
+
+.qr-section img {
+  width: 100px;
+  height: 100px;
+}
+
+.stamp-section {
+  text-align: center;
+  width: 180px;
+}
+
+.stamp-section img {
+  width: 150px;
+}
+
+.bottom-notes {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 11px;
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+}
+
+p {
+  margin: 3px 0;
+}
+
+@media print {
+  body {
+    background: none;
+  }
+  .page {
+    border: none;
+    width: 100%;
+    height: auto;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<div class="watermark">ELECTROLYTE</div>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="{{logoBase64}}" class="logo-left">
+  <img src="{{brandLogoBase64}}" class="logo-right">
+
+  <h1>Electrolyte Solutions</h1>
+  <p>Authorised Service Partner of Atomberg Technologies Pvt. Ltd.</p>
+  <p>Plot 70, Sector 1 Road No. 1, Ghansoli, Navi Mumbai - 400701</p>
+  <p>Phone: +91 8090712828 / 8104096232</p>
+  <p>Email ID: electrolytesolservice@gmail.com</p>
+</div>
+
+<div style="text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; text-decoration: underline;">
+  TAX INVOICE
+</div>
+
+<!-- BILLING AND CASE INFO -->
+<div class="flex">
+  <div class="box">
+    <div class="box-header">BILL TO</div>
+    <div class="box-content">
+      <p><b>{{customerName}}</b></p>
+      <p>Email: {{customerEmail}}</p>
+      <p>Warranty: {{warrantyType}}</p>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="box-header">INVOICE DETAILS</div>
+    <div class="box-content">
+      <p>Invoice No: <b>{{invoiceNumber}}</b></p>
+      <p>Date: {{date}}</p>
+      <p>Case ID: {{caseId}}</p>
+      <p>Brand: {{brand}}</p>
+      <p>Serial: {{serialNumber}}</p>
+    </div>
+  </div>
+</div>
+
+<div class="box" style="margin-top: 10px;">
+  <div class="box-header">SERVICE PROVIDER DETAILS</div>
+  <div class="box-content">
+    <p>Prepared By: <b>{{preparedBy}}</b></p>
+  </div>
+</div>
+
+<!-- ITEMS TABLE -->
+<table>
+  <thead>
+    <tr>
+      <th style="width: 50%;">DESCRIPTION</th>
+      <th style="width: 10%;">QTY</th>
+      <th style="width: 20%;">RATE (incl. tax)</th>
+      <th style="width: 20%;">AMOUNT</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{tableRows}}
+  </tbody>
+</table>
+
+<!-- TOTALS -->
+<div class="total-section">
+  <table class="total-table">
+    <tr>
+      <td>Subtotal:</td>
+      <td>Rs.{{subTotal}}</td>
+    </tr>
+    <tr>
+      <td>Service Charge:</td>
+      <td>Rs.{{serviceCharge}}</td>
+    </tr>
+    <tr class="bold">
+      <td>Grand Total:</td>
+      <td>Rs.{{grandTotal}}</td>
+    </tr>
+  </table>
+</div>
+
+<div class="words-section">
+  <b>Amount in Words:</b> {{totalInWords}}
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="bank-details">
+    <b>Bank Details</b>
+    <p>A/c Name: M/s Electrolyte Solutions</p>
+    <p>Bank: Axis Bank Ltd.</p>
+    <p>Account No.: 921000031635999</p>
+    <p>IFSC: UTIB0001622</p>
+    <p>Branch: Mulund East</p>
+  </div>
+
+  <div class="qr-section">
+    <img src="{{qrBase64}}">
+    <p style="font-size: 10px;">Scan to Pay</p>
+  </div>
+
+  <div class="stamp-section">
+    <img src="{{stampBase64}}">
+    <p style="font-weight: bold; font-size: 12px;">Authorized Signatory</p>
+  </div>
+</div>
+
+<div class="bottom-notes">
+  <p><b>Make all cheque or bank transfers payable to: M/s Electrolyte Solutions.</b></p>
+  <p>Note: Spare/Products are warranted for a period of 1 year.</p>
+  <p>This is a computer-generated invoice. No signature required.</p>
+  <p><b>Subjected to Navi Mumbai Jurisdiction.</b></p>
+</div>
+
+</div>
+
+</body>
+</html>

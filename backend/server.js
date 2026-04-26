@@ -30,8 +30,9 @@ app.use('/orders', ordersRoutes);
 app.use('/auth', authRoutes);
 app.use('/invoice', invoiceRoutes);
 
+const path = require('path');
 app.get('/', (req, res) => {
-  res.send('Spare Parts Management API is running...');
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {

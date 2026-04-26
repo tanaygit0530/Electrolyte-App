@@ -6,33 +6,53 @@ const { sendEmail } = require('../services/emailService');
 const createInvoice = async (req, res) => {
   try {
     const payload = req.body;
-    const user = req.user; // from auth middleware
+    const { 
+      customerName, 
+      customerEmail, 
+      warrantyType, 
+      brand, 
+      products, 
+      serialNumber, 
+      preparedBy, 
+      caseId, 
+      serviceCharge 
+    } = payload;
 
-    const items = payload.items || [];
-    let subTotal = payload.subTotal;
-    let totalAmount = payload.totalAmount;
+    // Calculate subtotal from products (name, qty, rate)
+    const items = (products || []).map(p => ({
+      description: p.name,
+      quantity: p.qty,
+      rate: p.rate,
+      amount: p.qty * p.rate
+    }));
 
-    if (subTotal === undefined) {
-      subTotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
-    }
-    
-    const serviceCharge = payload.serviceCharge || 0;
-    
-    if (totalAmount === undefined) {
-      totalAmount = subTotal + serviceCharge;
-    }
+    const subTotal = items.reduce((sum, item) => sum + item.amount, 0);
+    const sCharge = parseFloat(serviceCharge) || 0;
+    const totalAmount = subTotal + sCharge;
 
+    // Generate invoice number ES/26-27/OWXXXX
+    // ES/26-27/ (Financial year 26-27)
+    // OW (Warranty type OW/IW)
     const count = await Invoice.countDocuments();
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${(count + 1).toString().padStart(4, '0')}`;
+    const sequence = (count + 1).toString().padStart(4, '0');
+    const warrantyCode = (warrantyType || 'OW').toUpperCase();
+    const invoiceNumber = `ES/26-27/${warrantyCode}${sequence}`;
 
     const newInvoice = new Invoice({
-      ...payload,
       invoiceNumber,
-      technicianName: user.name || user.email || 'Technician',
+      technicianName: preparedBy || 'Technician',
+      customerName,
+      customerEmail,
+      warrantyType,
+      brand,
+      items,
+      serialNumber,
+      caseId,
       subTotal,
-      serviceCharge,
+      serviceCharge: sCharge,
       totalAmount,
       status: 'Generated',
+      preparedBy
     });
 
     const savedInvoice = await newInvoice.save();
@@ -45,7 +65,7 @@ const createInvoice = async (req, res) => {
     // Upload to Cloudinary
     try {
       if (process.env.CLOUDINARY_CLOUD_NAME) {
-         pdfUrl = await uploadToCloudinary(pdfBuffer, `${invoiceNumber}_${Date.now()}`);
+         pdfUrl = await uploadToCloudinary(pdfBuffer, `${invoiceNumber.replace(/\//g, '_')}_${Date.now()}`);
          savedInvoice.pdfUrl = pdfUrl;
          await savedInvoice.save();
       } else {
@@ -60,12 +80,12 @@ const createInvoice = async (req, res) => {
       try {
         await sendEmail(savedInvoice.customerEmail, invoiceNumber, pdfBuffer, pdfUrl);
       } catch (emailError) {
-        console.error("Resend Email Error:", emailError);
+        console.error("Email Sending Error:", emailError);
       }
     }
 
     res.status(201).json({
-      message: 'Invoice created and sent successfully',
+      message: 'Invoice generated and emailed successfully',
       invoiceId: savedInvoice._id,
       invoiceNumber,
       pdfUrl,
@@ -76,6 +96,7 @@ const createInvoice = async (req, res) => {
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 };
+
 
 const getInvoices = async (req, res) => {
   try {
