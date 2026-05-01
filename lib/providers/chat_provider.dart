@@ -5,9 +5,14 @@ class ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
+  final List<dynamic>? components;
 
-  ChatMessage({required this.text, required this.isUser, DateTime? timestamp})
-    : timestamp = timestamp ?? DateTime.now();
+  ChatMessage({
+    required this.text, 
+    required this.isUser, 
+    DateTime? timestamp,
+    this.components,
+  }) : timestamp = timestamp ?? DateTime.now();
 }
 
 class ChatProvider with ChangeNotifier {
@@ -48,12 +53,13 @@ class ChatProvider with ChangeNotifier {
       );
       final reply = response['reply'] as String;
       final newSessionId = response['sessionId'] as String?;
+      final components = response['components'] as List<dynamic>?;
 
       if (_currentSessionId == null && newSessionId != null) {
         _currentSessionId = newSessionId;
       }
 
-      _messages.add(ChatMessage(text: reply, isUser: false));
+      _messages.add(ChatMessage(text: reply, isUser: false, components: components));
     } catch (e) {
       _messages.add(
         ChatMessage(

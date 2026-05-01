@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/spare_part.dart';
 import '../theme/app_theme.dart';
+import 'invoice_preview_screen.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -19,7 +20,27 @@ class _BillingScreenState extends State<BillingScreen> {
   List<SparePart> _searchResults = [];
   SparePart? _selectedPart;
   bool _isSearching = false;
+  bool _isGenerating = false;
+  
   final _searchController = TextEditingController();
+  final _customerNameController = TextEditingController();
+  final _customerEmailController = TextEditingController();
+  final _serialNumberController = TextEditingController();
+  final _preparedByController = TextEditingController(text: 'DIPAK MOHITE');
+  final _caseIdController = TextEditingController();
+  final _serviceChargeController = TextEditingController(text: '0');
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _customerNameController.dispose();
+    _customerEmailController.dispose();
+    _serialNumberController.dispose();
+    _preparedByController.dispose();
+    _caseIdController.dispose();
+    _serviceChargeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +78,8 @@ class _BillingScreenState extends State<BillingScreen> {
                 },
               ),
 
-              _buildTextField("Customer Name", Icons.person, "Enter name"),
-              _buildTextField("Customer Email", Icons.email, "Enter email"),
+              _buildTextField("Customer Name", Icons.person, "Enter name", controller: _customerNameController),
+              _buildTextField("Customer Email", Icons.email, "Enter email", controller: _customerEmailController),
 
               _buildDropdownField(
                 "Select Brand",
@@ -141,22 +162,26 @@ class _BillingScreenState extends State<BillingScreen> {
                 "Serial Number",
                 Icons.grid_3x3,
                 "Enter serial number",
+                controller: _serialNumberController,
               ),
               _buildTextField(
                 "Prepared By",
                 Icons.person_outline,
                 "DIPAK MOHITE",
+                controller: _preparedByController,
               ),
               _buildTextField(
                 "Case ID",
                 Icons.confirmation_number_outlined,
                 "Enter case ID",
+                controller: _caseIdController,
               ),
               _buildTextField(
                 "Service Charge",
                 Icons.attach_money,
                 "0",
                 keyboardType: TextInputType.number,
+                controller: _serviceChargeController,
               ),
 
               const SizedBox(height: 24),
@@ -164,11 +189,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Processing Invoice...")),
-                    );
-                  },
+                  onPressed: _isGenerating ? null : _generateInvoice,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC107),
                     foregroundColor: Colors.black,
@@ -176,10 +197,16 @@ class _BillingScreenState extends State<BillingScreen> {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: const Text(
-                    "View Summary",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: _isGenerating
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          "Generate Invoice",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -195,6 +222,7 @@ class _BillingScreenState extends State<BillingScreen> {
     IconData icon,
     String hint, {
     TextInputType? keyboardType,
+    TextEditingController? controller,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -203,6 +231,7 @@ class _BillingScreenState extends State<BillingScreen> {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           TextFormField(
+            controller: controller,
             keyboardType: keyboardType,
             decoration: InputDecoration(
               hintText: hint,
@@ -272,21 +301,9 @@ class _BillingScreenState extends State<BillingScreen> {
           if (value.length > 2) {
             setState(() => _isSearching = true);
             try {
-              // We'll reuse getParts for broad search or add a search method
-              // For now, let's fetch all and filter locally or add a backend search
-              final all = await _apiService.getAllParts();
+              final results = await _apiService.searchParts(value);
               setState(() {
-                _searchResults = all
-                    .where(
-                      (p) =>
-                          p.partName.toLowerCase().contains(
-                            value.toLowerCase(),
-                          ) ||
-                          p.partCode.toLowerCase().contains(
-                            value.toLowerCase(),
-                          ),
-                    )
-                    .toList();
+                _searchResults = results;
               });
             } catch (e) {
               debugPrint("Search error: $e");
@@ -299,5 +316,67 @@ class _BillingScreenState extends State<BillingScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _generateInvoice() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedPart == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a product')),
+      );
+      return;
+    }
+
+    setState(() => _isGenerating = true);
+
+    try {
+      final payload = {
+        "customerName": _customerNameController.text,
+        "customerEmail": _customerEmailController.text,
+        "warrantyType": _warrantyType == 'Out of Warranty (OW)' ? 'OW' : 'IW',
+        "brand": _brand,
+        "products": [
+          {
+            "name": _selectedPart!.partName,
+            "qty": 1, // Currently only 1 is supported by UI
+            "rate": _selectedPart!.price,
+          }
+        ],
+        "serialNumber": _serialNumberController.text,
+        "preparedBy": _preparedByController.text,
+        "caseId": _caseIdController.text,
+        "serviceCharge": double.tryParse(_serviceChargeController.text) ?? 0,
+      };
+
+      final response = await _apiService.createInvoice(payload);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'Invoice generated!')),
+        );
+      }
+
+      final pdfUrl = response['pdfUrl'];
+      if (pdfUrl != null && pdfUrl.toString().isNotEmpty) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InvoicePreviewScreen(pdfUrl: pdfUrl),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating invoice: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
   }
 }

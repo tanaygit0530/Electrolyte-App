@@ -35,3 +35,25 @@ exports.getPartByCode = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.searchParts = async (req, res) => {
+  const { q } = req.query;
+  
+  if (!q) {
+    return res.status(200).json([]);
+  }
+
+  try {
+    const components = await Component.find({
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { code: { $regex: q, $options: 'i' } }
+      ]
+    }).limit(5);
+
+    const formattedData = components.map(formatComponent);
+    res.status(200).json(formattedData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

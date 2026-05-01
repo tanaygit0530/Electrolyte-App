@@ -11,7 +11,7 @@ const importData = async () => {
     console.log('Connected successfully!');
 
     // 2. Read the Excel file
-    const filePath = 'C:\\Users\\Prasad\\Downloads\\Projects\\Electrolyte-App\\resources\\New Part Price List - Copy.xlsx';
+    const filePath = 'C:\\Users\\Prasad\\Downloads\\Projects\\Electrolyte-App\\backend\\New Part Price List.xlsx';
     console.log(`Reading Excel file from ${filePath}...`);
     const workbook = xlsx.readFile(filePath);
     const sheetName = workbook.SheetNames[0];

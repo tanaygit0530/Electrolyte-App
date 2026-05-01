@@ -12,8 +12,9 @@ const uploadToCloudinary = (fileBuffer, fileName) => {
       {
         folder: 'invoices',
         public_id: fileName,
-        resource_type: 'raw',
+        resource_type: 'image', // Cloudinary treats PDFs as images for public viewing
         format: 'pdf',
+        access_mode: 'public',
       },
       (error, result) => {
         if (error || !result) {

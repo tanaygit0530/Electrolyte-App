@@ -3,6 +3,7 @@ const router = express.Router();
 const partsController = require('../controllers/partsController');
 
 router.get('/', partsController.getAllParts);
+router.get('/search', partsController.searchParts);
 router.get('/:code', partsController.getPartByCode);
 
 module.exports = router;

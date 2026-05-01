@@ -61,9 +61,9 @@ const generatePDF = async (invoiceData) => {
     // Load images
     const resourcesPath = path.join(__dirname, '../../resources');
     const logoBase64 = getBase64Image(path.join(resourcesPath, 'company_logo_lighttheme.png'));
-    const brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.png')); 
-    const qrBase64 = getBase64Image(path.join(resourcesPath, 'qr code.jpeg'));
-    const stampBase64 = getBase64Image(path.join(resourcesPath, 'Stamp with sign.PNG'));
+    const brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.png'));
+    const qrBase64 = getBase64Image(path.join(resourcesPath, 'qr_code.jpeg'));
+    const stampBase64 = getBase64Image(path.join(resourcesPath, 'Stamp_with_sign.PNG'));
 
     // Load template
     const templatePath = path.join(__dirname, '../template.html');
@@ -90,6 +90,8 @@ const generatePDF = async (invoiceData) => {
     const replacements = {
       '{{logoBase64}}': logoBase64,
       '{{brandLogoBase64}}': brandLogoBase64,
+      '{{qrBase64}}': qrBase64,
+      '{{stampBase64}}': stampBase64,
       '{{customerName}}': invoiceData.customerName || 'N/A',
       '{{customerEmail}}': invoiceData.customerEmail || 'N/A',
       '{{warrantyType}}': invoiceData.warrantyType || 'N/A',
@@ -111,7 +113,7 @@ const generatePDF = async (invoiceData) => {
     }
 
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    
+
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,

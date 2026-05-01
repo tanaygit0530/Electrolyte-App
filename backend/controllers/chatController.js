@@ -1,28 +1,19 @@
 const supabase = require('../config/supabaseClient');
-const { GoogleGenAI } = require("@google/genai");
+const Component = require('../models/Component');
 require('dotenv').config();
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
+const formatComponent = (comp) => ({
+  id: comp._id.toString(),
+  part_name: comp.name,
+  part_code: comp.code,
+  model: comp.description || 'N/A',
+  price: comp.customerPrice || 0,
+  stock_quantity: 10, // Default fallback
+  status: comp.active ? 'Available' : 'Out of Stock'
 });
 
 exports.processChat = async (req, res) => {
   try {
-    // 1. Validate Environment Variables
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("CRITICAL: Missing GEMINI_API_KEY");
-      return res.status(500).json({
-        reply: "Server configuration error: Missing Gemini API key."
-      });
-    }
-
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
-      console.error("CRITICAL: Missing Supabase Credentials");
-      return res.status(500).json({
-        reply: "Server configuration error: Missing Supabase credentials."
-      });
-    }
-
     const { message: userMessage } = req.body;
     let { sessionId } = req.body;
 
@@ -34,8 +25,8 @@ exports.processChat = async (req, res) => {
 
     console.log("User Message:", userMessage);
 
-    // 2. Handle Session
-    if (!sessionId) {
+    // Handle Session
+    if (!sessionId && supabase) {
       const { data: sessionData, error: sessionError } = await supabase
         .from('chat_sessions')
         .insert([{ title: userMessage.substring(0, 30) + (userMessage.length > 30 ? '...' : '') }])
@@ -49,8 +40,8 @@ exports.processChat = async (req, res) => {
       }
     }
 
-    // 3. Save User Message
-    if (sessionId) {
+    // Save User Message
+    if (sessionId && supabase) {
       await supabase.from('chat_messages').insert([
         { session_id: sessionId, role: 'user', content: userMessage }
       ]);
@@ -58,79 +49,41 @@ exports.processChat = async (req, res) => {
       await supabase.from('chat_sessions').update({ updated_at: new Date() }).eq('id', sessionId);
     }
 
-    // 4. Initialize Gemini
-    const result = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: `
-You are a spare parts assistant.
-Extract part_code, part_name, or model from this message.
-Return only valid JSON:
-{
-  "part_code": "",
-  "part_name": "",
-  "model": ""
-}
+    // Search MongoDB Components
+    // Escape regex characters in userMessage just in case, but standard regex search works for most inputs.
+    const escapedMessage = userMessage.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexQuery = { $regex: escapedMessage, $options: 'i' };
+    
+    const components = await Component.find({
+      $or: [
+        { name: regexQuery },
+        { code: regexQuery },
+        { description: regexQuery }
+      ]
+    }).limit(20);
 
-Message: "${userMessage}"
-`
-    });
-
-    let extracted = { part_code: "", part_name: "", model: "" };
     let replyMessage = "";
+    let formattedComponents = [];
 
-    // 5. Safe JSON Parsing
-    try {
-      let responseText = result.text;
-      if (responseText.includes("```json")) {
-        responseText = responseText.split("```json")[1].split("```")[0].trim();
-      } else if (responseText.includes("```")) {
-        responseText = responseText.split("```")[1].split("```")[0].trim();
-      }
-      extracted = JSON.parse(responseText);
-    } catch (jsonError) {
-      console.log("JSON parse error:", jsonError);
-    }
-
-    // 6. Query Supabase for parts
-    let query = supabase.from("spare_parts").select("*");
-    let hasQuery = false;
-
-    if (extracted.part_code) {
-      query = query.eq('part_code', extracted.part_code);
-      hasQuery = true;
-    } else if (extracted.part_name) {
-      query = query.ilike('part_name', `%${extracted.part_name}%`);
-      hasQuery = true;
-    } else if (extracted.model) {
-      query = query.ilike('model', `%${extracted.model}%`);
-      hasQuery = true;
-    }
-
-    if (!hasQuery) {
-      replyMessage = "I'm here to help with spare parts. Could you please specify a part name, code, or model?";
+    if (components.length === 0) {
+      replyMessage = "No matching spare parts found for your query.";
     } else {
-      const { data: parts, error: partsError } = await query;
-      if (partsError) {
-        replyMessage = "Sorry, I had trouble checking the inventory.";
-      } else if (!parts || parts.length === 0) {
-        replyMessage = "No matching spare part found in our database.";
-      } else {
-        parts.forEach(part => {
-          replyMessage += `Part Name: ${part.part_name}\nModel: ${part.model}\nPrice: ₹${part.price}\nStock: ${part.stock_quantity}\nStatus: ${part.status}\n\n`;
-        });
-      }
+      replyMessage = `Found ${components.length} matching component(s):`;
+      formattedComponents = components.map(formatComponent);
     }
 
-    replyMessage = replyMessage.trim();
-
-    // 7. Save AI Response
-    if (sessionId) {
+    // Save Assistant Response
+    if (sessionId && supabase) {
       await supabase.from('chat_messages').insert([
         { session_id: sessionId, role: 'assistant', content: replyMessage }
       ]);
     }
 
-    res.json({ reply: replyMessage, sessionId: sessionId });
+    res.json({ 
+      reply: replyMessage, 
+      components: formattedComponents,
+      sessionId: sessionId 
+    });
 
   } catch (err) {
     console.error("SERVER ERROR:", err);
@@ -142,6 +95,9 @@ Message: "${userMessage}"
 
 exports.getSessions = async (req, res) => {
   try {
+    if (!supabase) {
+      return res.json([]);
+    }
     const { data, error } = await supabase
       .from('chat_sessions')
       .select('*')
@@ -157,6 +113,9 @@ exports.getSessions = async (req, res) => {
 exports.getSessionMessages = async (req, res) => {
   const { sessionId } = req.params;
   try {
+    if (!supabase) {
+      return res.json([]);
+    }
     const { data, error } = await supabase
       .from('chat_messages')
       .select('*')

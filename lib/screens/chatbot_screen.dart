@@ -71,6 +71,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   message: message.text,
                   isUser: message.isUser,
                   isDark: isDark,
+                  components: message.components,
                 );
               },
             ),
@@ -159,40 +160,125 @@ class _ChatBubble extends StatelessWidget {
   final String message;
   final bool isUser;
   final bool isDark;
+  final List<dynamic>? components;
 
   const _ChatBubble({
     required this.message,
     required this.isUser,
     required this.isDark,
+    this.components,
   });
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        decoration: BoxDecoration(
-          color: isUser
-              ? const Color(0xFFFFC107)
-              : (isDark ? const Color(0xFF1B263B) : const Color(0xFFEEEEEE)),
-          borderRadius: BorderRadius.circular(20).copyWith(
-            bottomRight: isUser ? Radius.zero : const Radius.circular(20),
-            bottomLeft: !isUser ? Radius.zero : const Radius.circular(20),
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
+            decoration: BoxDecoration(
+              color: isUser
+                  ? const Color(0xFFFFC107)
+                  : (isDark ? const Color(0xFF1B263B) : const Color(0xFFEEEEEE)),
+              borderRadius: BorderRadius.circular(20).copyWith(
+                bottomRight: isUser ? Radius.zero : const Radius.circular(20),
+                bottomLeft: !isUser ? Radius.zero : const Radius.circular(20),
+              ),
+            ),
+            child: Text(
+              message,
+              style: TextStyle(
+                color: isUser
+                    ? Colors.white
+                    : (isDark ? Colors.white : Colors.black87),
+              ),
+            ),
           ),
-        ),
-        child: Text(
-          message,
-          style: TextStyle(
-            color: isUser
-                ? Colors.white
-                : (isDark ? Colors.white : Colors.black87),
-          ),
-        ),
+          if (components != null && components!.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 4, bottom: 8),
+              width: MediaQuery.of(context).size.width * 0.85,
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: components!.length,
+                itemBuilder: (context, index) {
+                  final comp = components![index];
+                  return Card(
+                    color: isDark ? const Color(0xFF2B3A55) : Colors.white,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            comp['part_name'] ?? 'Unknown Part',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Code: ${comp['part_code'] ?? 'N/A'} | Model: ${comp['model'] ?? 'N/A'}",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "₹${comp['price']?.toString() ?? '0'}",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFFFC107),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: comp['status'] == 'Available' 
+                                      ? Colors.green.withOpacity(0.2) 
+                                      : Colors.red.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  comp['status'] ?? 'Unknown',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: comp['status'] == 'Available' 
+                                        ? Colors.green 
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
