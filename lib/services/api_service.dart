@@ -16,7 +16,7 @@ class ApiService {
     if (kIsWeb) return 'http://localhost:5001';
     
     try {
-      if (Platform.isAndroid) return 'http://192.168.1.38:5001'; // Default for Android Emulator
+      if (Platform.isAndroid) return 'http://192.168.1.36:5001'; // Default for Android Emulator 192.168.1.36
       if (Platform.isIOS) return 'http://localhost:5001';     // Default for iOS Simulator
     } catch (e) {
       // Fallback if Platform check fails

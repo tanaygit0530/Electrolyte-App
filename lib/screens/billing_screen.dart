@@ -84,7 +84,7 @@ class _BillingScreenState extends State<BillingScreen> {
               _buildDropdownField(
                 "Select Brand",
                 _brand,
-                ['Select Brand', 'Samsung', 'LG', 'Sony'],
+                ['Select Brand', 'Atomberg', 'Symphony', 'Bajaj'],
                 (val) {
                   setState(() => _brand = val!);
                 },
