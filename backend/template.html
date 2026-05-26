@@ -38,7 +38,7 @@
 
       /* balanced side spacing */
       padding-left: 150px;
-      padding-right: 210px;
+      padding-right: {{headerPaddingRight}}px;
 
       min-height: 125px;
 
@@ -71,10 +71,11 @@
 
       transform: translateY(-50%);
 
-      width: 180px;
+      width: {{brandLogoWidth}}px;
       height: auto;
 
       object-fit: contain;
+      display: {{brandLogoDisplay}};
     }
 
     /* COMPANY TITLE */

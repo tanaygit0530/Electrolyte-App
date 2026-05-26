@@ -61,7 +61,26 @@ const generatePDF = async (invoiceData) => {
     // Load images
     const resourcesPath = path.join(__dirname, '../../resources');
     const logoBase64 = getBase64Image(path.join(resourcesPath, 'company_logo_lighttheme.png'));
-    const brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.png'));
+    
+    let brandLogoBase64 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // transparent spacer
+    let brandLogoWidth = 180;
+    let headerPaddingRight = 210;
+    let brandLogoDisplay = 'block';
+
+    const brand = (invoiceData.brand || '').toLowerCase();
+    if (brand.includes('atomberg')) {
+      brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Atomberg-Logo.png'));
+      brandLogoWidth = 180;
+      headerPaddingRight = 210;
+    } else if (brand.includes('symphony')) {
+      brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.png'));
+      brandLogoWidth = 140;
+      headerPaddingRight = 170;
+    } else {
+      brandLogoDisplay = 'none';
+      headerPaddingRight = 150; // perfectly center text if no brand logo
+    }
+
     const qrBase64 = getBase64Image(path.join(resourcesPath, 'qr_code.jpeg'));
     const stampBase64 = getBase64Image(path.join(resourcesPath, 'Stamp_with_sign.PNG'));
 
@@ -98,6 +117,9 @@ const generatePDF = async (invoiceData) => {
     const replacements = {
       '{{logoBase64}}': logoBase64,
       '{{brandLogoBase64}}': brandLogoBase64,
+      '{{brandLogoWidth}}': brandLogoWidth,
+      '{{brandLogoDisplay}}': brandLogoDisplay,
+      '{{headerPaddingRight}}': headerPaddingRight,
       '{{qrBase64}}': qrBase64,
       '{{stampBase64}}': stampBase64,
       '{{customerName}}': invoiceData.customerName || 'N/A',
