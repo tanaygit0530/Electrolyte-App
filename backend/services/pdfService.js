@@ -86,6 +86,14 @@ const generatePDF = async (invoiceData) => {
       year: 'numeric'
     });
 
+    // Prepare GST row
+    const gstRow = (invoiceData.gstAmount && invoiceData.gstAmount > 0) ? `
+      <tr>
+        <td>GST (18%):</td>
+        <td>Rs. ${Number(invoiceData.gstAmount).toFixed(2)}</td>
+      </tr>
+    ` : '';
+
     // Replace placeholders
     const replacements = {
       '{{logoBase64}}': logoBase64,
@@ -103,6 +111,7 @@ const generatePDF = async (invoiceData) => {
       '{{preparedBy}}': invoiceData.preparedBy || 'N/A',
       '{{tableRows}}': tableRows,
       '{{subTotal}}': Number(invoiceData.subTotal).toFixed(2),
+      '{{gstRow}}': gstRow,
       '{{serviceCharge}}': Number(invoiceData.serviceCharge || 0).toFixed(2),
       '{{grandTotal}}': Number(invoiceData.totalAmount).toFixed(2),
       '{{totalInWords}}': numberToWords(invoiceData.totalAmount)

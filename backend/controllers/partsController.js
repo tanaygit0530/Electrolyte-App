@@ -7,8 +7,8 @@ const formatComponent = (comp) => ({
   part_code: comp.code,
   model: comp.description || 'N/A',
   price: comp.customerPrice || 0,
-  stock_quantity: 10, // Default fallback
-  status: comp.active ? 'Available' : 'Out of Stock'
+  stock_quantity: comp.stockQuantity !== undefined ? comp.stockQuantity : 10,
+  status: comp.active ? (comp.stockQuantity > 0 ? 'Available' : 'Out of Stock') : 'Out of Stock'
 });
 
 exports.getAllParts = async (req, res) => {

@@ -37,15 +37,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Invexa Assistant',
+              'Assistant',
               style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Updated 82d ago',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.white70 : Colors.black54,
-              ),
             ),
           ],
         ),

@@ -17,6 +17,7 @@ const invoiceSchema = new mongoose.Schema(
       },
     ],
     subTotal: { type: Number, required: true },
+    gstAmount: { type: Number, default: 0 },
     serviceCharge: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     pdfUrl: { type: String },

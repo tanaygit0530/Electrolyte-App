@@ -73,7 +73,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             final order = provider.orders[index];
             return _HistoryCard(
               title: order.partName,
-              subtitle: "Order ID: ${order.id.substring(0, 8)}...",
+              subtitle: "Order ID: ${order.id.length > 8 ? order.id.substring(0, 8) : order.id}...",
               date: DateFormat('dd MMM yyyy, hh:mm a').format(order.createdAt),
               status: order.status,
               icon: Icons.shopping_bag_outlined,

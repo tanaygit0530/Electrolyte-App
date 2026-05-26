@@ -23,6 +23,10 @@ const componentSchema = new mongoose.Schema({
   },
   aspPrice: {
     type: Number
+  },
+  stockQuantity: {
+    type: Number,
+    default: 10
   }
 }, { timestamps: true });
 

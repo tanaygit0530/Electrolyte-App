@@ -18,9 +18,10 @@ class _BillingScreenState extends State<BillingScreen> {
   String _brand = 'Select Brand';
 
   List<SparePart> _searchResults = [];
-  SparePart? _selectedPart;
+  final List<SparePart> _selectedParts = [];
   bool _isSearching = false;
   bool _isGenerating = false;
+  bool _gstEnabled = false;
   
   final _searchController = TextEditingController();
   final _customerNameController = TextEditingController();
@@ -119,9 +120,11 @@ class _BillingScreenState extends State<BillingScreen> {
                         trailing: Text("₹${part.price}"),
                         onTap: () {
                           setState(() {
-                            _selectedPart = part;
+                            if (!_selectedParts.any((p) => p.partCode == part.partCode)) {
+                              _selectedParts.add(part);
+                            }
                             _searchResults = [];
-                            _searchController.text = part.partName;
+                            _searchController.clear();
                           });
                         },
                       );
@@ -135,25 +138,33 @@ class _BillingScreenState extends State<BillingScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const Divider(),
-              if (_selectedPart != null)
-                Card(
-                  color: AppTheme.primaryYellow.withValues(alpha: 0.1),
-                  child: ListTile(
-                    title: Text(_selectedPart!.partName),
-                    subtitle: Text(
-                      "${_selectedPart!.partCode} | ₹${_selectedPart!.price}",
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red),
-                      onPressed: () => setState(() => _selectedPart = null),
-                    ),
-                  ),
+              if (_selectedParts.isNotEmpty)
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _selectedParts.length,
+                  itemBuilder: (context, index) {
+                    final part = _selectedParts[index];
+                    return Card(
+                      color: AppTheme.primaryYellow.withValues(alpha: 0.1),
+                      child: ListTile(
+                        title: Text(part.partName),
+                        subtitle: Text(
+                          "${part.partCode} | ₹${part.price}",
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () => setState(() => _selectedParts.removeAt(index)),
+                        ),
+                      ),
+                    );
+                  },
                 )
               else
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
-                    "No product selected",
+                    "No products selected",
                     style: TextStyle(color: Colors.grey),
                   ),
                 ),
@@ -182,6 +193,22 @@ class _BillingScreenState extends State<BillingScreen> {
                 "0",
                 keyboardType: TextInputType.number,
                 controller: _serviceChargeController,
+              ),
+
+              Row(
+                children: [
+                  Checkbox(
+                    value: _gstEnabled,
+                    activeColor: const Color(0xFFFFC107),
+                    onChanged: (val) {
+                      setState(() => _gstEnabled = val ?? false);
+                    },
+                  ),
+                  const Text(
+                    "Apply GST (18%)",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 24),
@@ -320,9 +347,9 @@ class _BillingScreenState extends State<BillingScreen> {
 
   Future<void> _generateInvoice() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedPart == null) {
+    if (_selectedParts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a product')),
+        const SnackBar(content: Text('Please select at least one product')),
       );
       return;
     }
@@ -335,17 +362,16 @@ class _BillingScreenState extends State<BillingScreen> {
         "customerEmail": _customerEmailController.text,
         "warrantyType": _warrantyType == 'Out of Warranty (OW)' ? 'OW' : 'IW',
         "brand": _brand,
-        "products": [
-          {
-            "name": _selectedPart!.partName,
-            "qty": 1, // Currently only 1 is supported by UI
-            "rate": _selectedPart!.price,
-          }
-        ],
+        "products": _selectedParts.map((p) => {
+          "name": p.partName,
+          "qty": 1,
+          "rate": p.price,
+        }).toList(),
         "serialNumber": _serialNumberController.text,
         "preparedBy": _preparedByController.text,
         "caseId": _caseIdController.text,
         "serviceCharge": double.tryParse(_serviceChargeController.text) ?? 0,
+        "gstEnabled": _gstEnabled,
       };
 
       final response = await _apiService.createInvoice(payload);

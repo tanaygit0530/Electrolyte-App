@@ -15,7 +15,8 @@ const createInvoice = async (req, res) => {
       serialNumber, 
       preparedBy, 
       caseId, 
-      serviceCharge 
+      serviceCharge,
+      gstEnabled
     } = payload;
 
     // Calculate subtotal from products (name, qty, rate)
@@ -27,8 +28,9 @@ const createInvoice = async (req, res) => {
     }));
 
     const subTotal = items.reduce((sum, item) => sum + item.amount, 0);
+    const gstAmount = gstEnabled ? (subTotal * 0.18) : 0;
     const sCharge = parseFloat(serviceCharge) || 0;
-    const totalAmount = subTotal + sCharge;
+    const totalAmount = subTotal + gstAmount + sCharge;
 
     // Generate invoice number ES/26-27/OWXXXX
     // ES/26-27/ (Financial year 26-27)
@@ -49,6 +51,7 @@ const createInvoice = async (req, res) => {
       serialNumber,
       caseId,
       subTotal,
+      gstAmount,
       serviceCharge: sCharge,
       totalAmount,
       status: 'Generated',
