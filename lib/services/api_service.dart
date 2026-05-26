@@ -14,14 +14,16 @@ class ApiService {
 
     // 2. Automatically detect Emulator / Simulator / Web
     if (kIsWeb) return 'http://localhost:5001';
-    
+
     try {
-      if (Platform.isAndroid) return 'http://192.168.1.36:5001'; // Default for Android Emulator 192.168.1.36
-      if (Platform.isIOS) return 'http://localhost:5001';     // Default for iOS Simulator
+      if (Platform.isAndroid)
+        return 'http://192.168.1.3:5001'; // Default for Android Emulator 192.168.1.36
+      if (Platform.isIOS)
+        return 'http://localhost:5001'; // Default for iOS Simulator
     } catch (e) {
       // Fallback if Platform check fails
     }
-    
+
     return 'http://localhost:5001';
   }
 
@@ -36,7 +38,9 @@ class ApiService {
   }
 
   Future<List<SparePart>> searchParts(String query) async {
-    final response = await http.get(Uri.parse('$baseUrl/parts/search?q=$query'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/parts/search?q=$query'),
+    );
     if (response.statusCode == 200) {
       List data = json.decode(response.body);
       return data.map((item) => SparePart.fromJson(item)).toList();
@@ -119,7 +123,9 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> createInvoice(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> createInvoice(
+    Map<String, dynamic> payload,
+  ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/invoice'),
       headers: {'Content-Type': 'application/json'},
