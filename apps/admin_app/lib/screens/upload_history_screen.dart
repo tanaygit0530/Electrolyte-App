@@ -225,7 +225,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
         Expanded(
           child: ListView.separated(
             itemCount: logs.length,
-            separatorBuilder: (_, __) => Divider(height: 1, color: AdminTheme.textSecondary.withOpacity(0.08)),
+            separatorBuilder: (_, _) => Divider(height: 1, color: AdminTheme.textSecondary.withOpacity(0.08)),
             itemBuilder: (context, idx) {
               final log = logs[idx];
               final double successRate = log.totalRows > 0 ? (log.updatedRows / log.totalRows) : 0;

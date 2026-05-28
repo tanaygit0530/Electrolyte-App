@@ -48,7 +48,7 @@ class ApiService {
     if (data is String) {
       try {
         return json.decode(data) as Map<String, dynamic>;
-      } on FormatException catch (e) {
+      } on FormatException {
         final trimmed = data.trim();
         if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<body')) {
           throw const FormatException('Server returned an HTML error response instead of JSON. Check the backend server console logs for details.');
@@ -65,7 +65,7 @@ class ApiService {
     if (data is String) {
       try {
         return json.decode(data) as List<dynamic>;
-      } on FormatException catch (e) {
+      } on FormatException {
         final trimmed = data.trim();
         if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<body')) {
           throw const FormatException('Server returned an HTML error response instead of JSON. Check the backend server console logs for details.');

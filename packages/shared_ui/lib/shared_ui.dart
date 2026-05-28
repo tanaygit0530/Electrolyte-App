@@ -1,3 +1,3 @@
-library shared_ui;
+library;
 
 export 'src/theme/app_theme.dart';

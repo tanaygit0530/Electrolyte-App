@@ -349,7 +349,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                       )
                                     : ListView.separated(
                                         itemCount: filteredRows.length,
-                                        separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.transparent),
+                                        separatorBuilder: (_, _) => const Divider(height: 1, color: Colors.transparent),
                                         itemBuilder: (context, idx) {
                                           final row = filteredRows[idx];
                                           return Container(

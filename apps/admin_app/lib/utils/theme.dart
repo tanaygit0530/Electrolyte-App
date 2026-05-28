@@ -72,7 +72,6 @@ class AdminTheme {
         primary: primaryColor,
         secondary: accentTeal,
         surface: darkSurface,
-        background: darkBackground,
         error: errorColor,
       ),
       textTheme: const TextTheme(
