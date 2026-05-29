@@ -3,385 +3,370 @@
 
 <head>
   <meta charset="UTF-8">
-
+  <title>Tax Invoice</title>
   <style>
     * {
       box-sizing: border-box;
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: #f3f3f3;
-
+      background: #fff;
+      color: #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
-
-      color: #222;
     }
 
-    /* PAGE */
     .page {
       width: 100%;
-      background: #fff;
+      min-height: 277mm; /* Standard A4 height is 297mm, minus some padding */
+      border: 1.5px solid #000;
+      padding: 18px;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
-    /* HEADER */
+    /* WATERMARK (Atomberg and general styling) */
+    .watermark {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      opacity: 0.04;
+      font-size: 65px;
+      font-weight: bold;
+      letter-spacing: 5px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+      color: #000;
+    }
+
     .header {
       position: relative;
       text-align: center;
-
-      padding-top: 18px;
-      padding-bottom: 18px;
-
-      /* balanced side spacing */
-      padding-left: 150px;
-      padding-right: {{headerPaddingRight}}px;
-
-      min-height: 125px;
-
-      border-bottom: 2px solid #e5e5e5;
-
-      margin-bottom: 22px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      padding-left: 130px;
+      padding-right: 150px;
+      min-height: 100px;
+      border-bottom: 1.5px solid #000;
+      margin-bottom: 15px;
+      z-index: 1;
     }
 
-    /* LEFT LOGO */
     .logo-left {
       position: absolute;
-
-      left: 18px;
+      left: 10px;
       top: 50%;
-
       transform: translateY(-50%);
-
-      width: 120px;
+      width: 110px;
       height: auto;
-
       object-fit: contain;
     }
 
-    /* RIGHT LOGO */
     .logo-right {
       position: absolute;
-
-      right: 18px;
+      right: 10px;
       top: 50%;
-
       transform: translateY(-50%);
-
-      width: {{brandLogoWidth}}px;
       height: auto;
-
       object-fit: contain;
-      display: {{brandLogoDisplay}};
     }
 
-    /* COMPANY TITLE */
     .header h1 {
       margin: 0;
-
-      color: #c41e3a;
-
-      font-size: 30px;
-      font-weight: 700;
-
-      letter-spacing: 1px;
-
+      color: #000;
+      font-size: 26px;
+      font-weight: bold;
       line-height: 1.2;
     }
 
-    /* COMPANY INFO */
     .header p {
       margin: 3px 0;
-
-      font-size: 12px;
-
-      line-height: 1.5;
-
-      color: #555;
+      font-size: 11px;
+      color: #000;
+      line-height: 1.4;
     }
 
-    /* TITLE */
-    .invoice-title {
+    /* TAX INVOICE BAR (Symphony style) */
+    .tax-invoice-bar {
+      display: none;
       text-align: center;
-
-      font-size: 20px;
-      font-weight: 700;
-
+      font-size: 22px;
+      font-weight: bold;
       letter-spacing: 1px;
-
-      margin: 15px 0 22px;
-
-      color: #222;
+      border: 1.5px solid #000;
+      padding: 5px;
+      margin-bottom: 15px;
+      z-index: 1;
     }
 
-    /* FLEX */
-    .flex {
+    .brand-symphony .tax-invoice-bar {
+      display: block;
+    }
+
+    /* DETAILS BOX */
+    .details-box {
+      border: 1.5px solid #000;
+      margin-bottom: 15px;
+      z-index: 1;
+      background: #fff;
+    }
+
+    .details-container {
       display: flex;
       justify-content: space-between;
-      gap: 18px;
+      align-items: stretch;
     }
 
-    .flex>div {
+    .col-left, .col-right {
+      padding: 10px 15px;
       width: 50%;
+      font-size: 12px;
+      line-height: 1.6;
     }
 
-    /* BOXES */
-    .box {
-      background: #fafafa;
-
-      border: 1px solid #e3e3e3;
-
-      border-radius: 6px;
-
-      overflow: hidden;
+    .col-left {
+      border-right: 1.5px solid #000;
     }
 
-    .box-header {
-      background: #f4f4f4;
-
-      padding: 10px 14px;
-
-      font-weight: 700;
-
-      font-size: 13px;
-
-      border-bottom: 1px solid #e5e5e5;
+    .details-container p {
+      margin: 4px 0;
     }
 
-    .box-content {
-      padding: 14px;
+    /* ITEMS TABLE */
+    .table-container {
+      z-index: 1;
+      width: 100%;
+      background: #fff;
     }
 
-    .box-content p {
-      margin: 5px 0;
-      font-size: 13px;
-    }
-
-    /* TABLE */
-    table {
+    table.items-table {
       width: 100%;
       border-collapse: collapse;
-
-      margin-top: 22px;
+      margin-bottom: 15px;
+      border: 1.5px solid #000;
     }
 
-    th {
-      background: #f5f5f5;
-
-      border: 1px solid #dcdcdc;
-
-      padding: 12px 10px;
-
-      text-align: left;
-
-      font-size: 13px;
-
-      font-weight: 700;
+    table.items-table th, table.items-table td {
+      border: 1.5px solid #000;
+      padding: 8px 10px;
+      font-size: 12px;
+      vertical-align: middle;
     }
 
-    td {
-      border: 1px solid #e1e1e1;
-
-      padding: 11px 10px;
-
-      font-size: 13px;
+    table.items-table th {
+      background: #fff;
+      font-weight: bold;
     }
 
-    /* TABLE ALIGNMENTS */
-    th:nth-child(2),
-    th:nth-child(3),
-    th:nth-child(4),
-    td:nth-child(2),
-    td:nth-child(3),
-    td:nth-child(4) {
-      text-align: right;
+    /* Table alignments for Atomberg */
+    .brand-atomberg table.items-table th:nth-child(2),
+    .brand-atomberg table.items-table th:nth-child(3),
+    .brand-atomberg table.items-table th:nth-child(4),
+    .brand-atomberg table.items-table td:nth-child(2),
+    .brand-atomberg table.items-table td:nth-child(3),
+    .brand-atomberg table.items-table td:nth-child(4) {
+      text-align: center;
     }
 
-    /* TOTALS */
-    .total-section {
+    /* Table alignments for Symphony */
+    .brand-symphony table.items-table th:nth-child(2),
+    .brand-symphony table.items-table th:nth-child(3),
+    .brand-symphony table.items-table th:nth-child(4),
+    .brand-symphony table.items-table th:nth-child(5),
+    .brand-symphony table.items-table td:nth-child(2),
+    .brand-symphony table.items-table td:nth-child(3),
+    .brand-symphony table.items-table td:nth-child(4),
+    .brand-symphony table.items-table td:nth-child(5) {
+      text-align: center;
+    }
+
+    /* TOTALS BOX (Atomberg style) */
+    .totals-container {
       display: flex;
-      justify-content: flex-end;
-
-      margin-top: 15px;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-bottom: 15px;
+      z-index: 1;
+      background: #fff;
     }
 
-    .total-table {
-      width: 320px;
-      border-collapse: collapse;
+    .totals-row {
+      width: 280px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 10px;
+      font-weight: bold;
     }
 
-    .total-table td {
-      padding: 10px 12px;
-
-      border: 1px solid #dcdcdc;
-
-      text-align: right;
+    .totals-row.grand-total {
+      font-size: 14px;
+      font-weight: bold;
+      border-top: 1.5px solid #000;
+      padding-top: 6px;
+      margin-top: 4px;
     }
 
-    .total-table tr:last-child td {
-      background: #f5f5f5;
-
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    /* WORDS */
+    /* WORDS SECTION */
     .words-section {
-      margin-top: 14px;
-
-      border: 1px solid #e3e3e3;
-
-      border-radius: 6px;
-
-      padding: 12px 14px;
-
-      background: #fafafa;
-
-      font-size: 13px;
-      line-height: 1.5;
-
-      font-style: italic;
+      font-size: 11px;
+      margin-bottom: 15px;
+      z-index: 1;
+      background: #fff;
     }
 
-    /* WATERMARK */
-    .watermark {
-      position: absolute;
+    .brand-atomberg .words-section {
+      border-bottom: 1.5px solid #000;
+      padding-bottom: 15px;
+    }
 
-      top: 50%;
-      left: 50%;
-
-      transform: translate(-50%, -50%) rotate(-45deg);
-
-      opacity: 0.03;
-
-      font-size: 70px;
-      font-weight: 700;
-
-      white-space: nowrap;
-
-      pointer-events: none;
-
-      z-index: 0;
+    .brand-symphony .words-section {
+      border: 1.5px solid #000;
+      padding: 8px 10px;
     }
 
     /* FOOTER */
     .footer {
       display: flex;
-
       justify-content: space-between;
-
-      align-items: flex-end;
-
-      gap: 20px;
-
-      margin-top: 40px;
+      align-items: stretch;
+      margin-bottom: 15px;
+      z-index: 1;
+      background: #fff;
     }
 
-    /* BANK */
     .bank-details {
-      width: 260px;
-
-      border: 1px solid #e3e3e3;
-
-      border-radius: 6px;
-
-      background: #fafafa;
-
-      padding: 12px;
-
-      font-size: 12px;
+      width: 40%;
+      border: 1.5px solid #000;
+      padding: 10px;
+      font-size: 11px;
+      line-height: 1.5;
     }
 
     .bank-details b {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 5px;
+      font-size: 12px;
     }
 
     .bank-details p {
-      margin: 4px 0;
-    }
-
-    /* QR */
-    .qr-section,
-    .stamp-section {
-      display: flex;
-
-      flex-direction: column;
-
-      align-items: center;
-
-      justify-content: flex-end;
+      margin: 2px 0;
     }
 
     .qr-section {
-      width: 120px;
+      width: 25%;
+      border: 1.5px solid #000;
+      border-left: none;
+      padding: 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-symphony .qr-section {
+      display: none; /* Symphony template has no QR code */
     }
 
     .qr-section img {
-      width: 100px;
-      height: 100px;
-
+      width: 75px;
+      height: 75px;
       object-fit: contain;
+      margin-bottom: 5px;
     }
 
-    /* SIGN */
+    .qr-section p {
+      margin: 0;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
     .stamp-section {
-      width: 180px;
+      width: 35%;
+      border: 1.5px solid #000;
+      border-left: none;
+      padding: 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .brand-symphony .stamp-section {
+      width: 60%; /* Spans remaining space because QR is hidden */
+      border-left: 1.5px solid #000;
     }
 
     .stamp-section img {
-      width: 150px;
+      width: 110px;
+      height: auto;
       object-fit: contain;
+      margin-bottom: 5px;
     }
 
-    /* NOTES */
-    .bottom-notes {
-      margin-top: 35px;
-
-      padding-top: 14px;
-
-      border-top: 1px solid #e5e5e5;
-
-      text-align: center;
-
+    .signatory-title {
+      margin: 0;
       font-size: 11px;
+      font-weight: bold;
+    }
 
-      color: #555;
+    /* BOTTOM NOTES */
+    .bottom-notes {
+      text-align: center;
+      font-size: 10px;
+      line-height: 1.5;
+      z-index: 1;
+      background: #fff;
     }
 
     .bottom-notes p {
-      margin: 5px 0;
+      margin: 3px 0;
     }
 
-    /* PRINT */
+    .payable-note {
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    /* THANK YOU BAR (Symphony style) */
+    .thank-you-bar {
+      display: none;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 6px;
+      margin-top: 15px;
+      z-index: 1;
+    }
+
+    .brand-symphony .thank-you-bar {
+      display: block;
+    }
+
+    /* PRINT LAYOUT */
     @media print {
-
       body {
-        background: white;
+        background: #fff;
       }
-
       .page {
-        width: 100%;
+        border: 1.5px solid #000;
       }
-
-      table,
-      tr,
-      td,
-      th,
-      .footer,
-      .box {
-        page-break-inside: avoid;
-      }
-
     }
   </style>
-
 </head>
 
-<body>
+<body class="{{brandClass}}">
 
   <div class="page">
 
@@ -390,198 +375,77 @@
 
     <!-- HEADER -->
     <div class="header">
-
-      <!-- STATIC -->
-      <!-- <img src="company_logo_lighttheme.png" class="logo-left">
-    <img src="Symphony-Logo-PNG1.png" class="logo-right"> -->
-
-      <!-- DYNAMIC -->
       <img src="{{logoBase64}}" class="logo-left">
-      <img src="{{brandLogoBase64}}" class="logo-right">
-
-
+      <img src="{{brandLogoBase64}}" class="logo-right" style="width: {{brandLogoWidth}}px; display: {{brandLogoDisplay}};">
+      
       <h1>Electrolyte Solutions</h1>
-
-      <p>Authorised Service Partner of Atomberg Technologies Pvt. Ltd.</p>
-      <p>Plot 70, Sector 1 Road No. 1, Ghansoli, Navi Mumbai - 400701</p>
-      <p>Phone: +91 8090712828 / 8104096232</p>
-      <p>Email ID: electrolytesolservice@gmail.com</p>
-
+      <p><b>{{partnerSubtitle}}</b></p>
+      <p>{{addressLine}}</p>
+      <p>Phone: {{phoneLine}}</p>
+      {{gstinLine}}
+      <p>Email ID: {{emailLine}}</p>
     </div>
 
-    <!-- TITLE -->
-    <div class="invoice-title">
+    <!-- TAX INVOICE BAR (Only for Symphony) -->
+    <div class="tax-invoice-bar">
       TAX INVOICE
     </div>
 
-    <!-- BILL + INVOICE -->
-    <div class="flex">
-
-      <div class="box">
-
-        <div class="box-header">
-          BILL TO
-        </div>
-
-        <div class="box-content">
-          <p><b>{{customerName}}</b></p>
-          <p>Email: {{customerEmail}}</p>
-          <p>Warranty: {{warrantyType}}</p>
-        </div>
-
-      </div>
-
-      <div class="box">
-
-        <div class="box-header">
-          INVOICE DETAILS
-        </div>
-
-        <div class="box-content">
-          <p>Invoice No: <b>{{invoiceNumber}}</b></p>
-          <p>Date: {{date}}</p>
-          <p>Case ID: {{caseId}}</p>
-          <p>Brand: {{brand}}</p>
-          <p>Serial: {{serialNumber}}</p>
-        </div>
-
-      </div>
-
-    </div>
-
-    <!-- SERVICE PROVIDER -->
-    <div class="box" style="margin-top:10px;">
-
-      <div class="box-header">
-        SERVICE PROVIDER DETAILS
-      </div>
-
-      <div class="box-content">
-        <p>Prepared By: <b>{{preparedBy}}</b></p>
-      </div>
-
+    <!-- DETAILS BOX (Unified large box) -->
+    <div class="details-box">
+      {{detailsBoxContent}}
     </div>
 
     <!-- ITEMS TABLE -->
-    <table>
-
-      <thead>
-        <tr>
-          <th style="width:50%;">DESCRIPTION</th>
-          <th style="width:10%;">QTY</th>
-          <th style="width:20%;">RATE (incl. tax)</th>
-          <th style="width:20%;">AMOUNT</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {{tableRows}}
-      </tbody>
-
-    </table>
-
-    <!-- TOTALS -->
-    <div class="total-section">
-
-      <table class="total-table">
-
-        <tr>
-          <td>Subtotal:</td>
-          <td>Rs. {{subTotal}}</td>
-        </tr>
-
-        {{gstRow}}
-
-        <tr>
-          <td>Service Charge:</td>
-          <td>Rs. {{serviceCharge}}</td>
-        </tr>
-
-        <tr class="bold">
-          <td>Grand Total:</td>
-          <td>Rs. {{grandTotal}}</td>
-        </tr>
-
-      </table>
-
+    <div class="table-container">
+      {{tableMarkup}}
     </div>
 
-    <!-- WORDS -->
+    <!-- TOTALS SECTION (Only populated for Atomberg) -->
+    {{totalsBlock}}
+
+    <!-- IN WORDS SECTION -->
     <div class="words-section">
-      <b>Amount in Words:</b> {{totalInWords}}
+      {{wordsText}}
     </div>
 
-    <!-- FOOTER -->
+    <!-- FOOTER WITH BANK, QR, STAMP -->
     <div class="footer">
-
-      <!-- BANK -->
+      
+      <!-- BANK DETAILS -->
       <div class="bank-details">
-
         <b>Bank Details</b>
-
-        <p>A/c Name: M/s Electrolyte Solutions</p>
-        <p>Bank: Axis Bank Ltd.</p>
-        <p>Account No.: 921000031635999</p>
-        <p>IFSC: UTIB0001622</p>
-        <p>Branch: Mulund East</p>
-
+        {{bankDetailsContent}}
       </div>
 
-      <!-- QR -->
+      <!-- QR CODE -->
       <div class="qr-section">
-
-        <!-- DYNAMIC -->
-        <img src="{{qrBase64}}">
-
-        <!-- STATIC -->
         <!-- <img src="qr_code.jpeg"> -->
-
-        <p style="font-size:10px;">
-          Scan to Pay
-        </p>
-
+        <img src="{{qrBase64}}">
+        <p>Scan to Pay</p>
       </div>
 
-      <!-- SIGN -->
+      <!-- STAMP -->
       <div class="stamp-section">
-
-        <!-- DYNAMIC -->
         <img src="{{stampBase64}}">
-
-        <!-- STATIC -->
-        <!-- <img src="Stamp_with_sign.PNG"> -->
-
-        <p style="
-        font-weight:bold;
-        font-size:12px;
-      ">
-          Authorized Signatory
+        <p class="signatory-title">
+          {{signatoryTitle}}
         </p>
-
       </div>
 
     </div>
 
-    <!-- NOTES -->
+    <!-- BOTTOM NOTES & LEGAL -->
     <div class="bottom-notes">
+      <p class="payable-note">{{payableNote}}</p>
+      <p class="warranty-note">{{warrantyNote}}</p>
+      <p>This is a computer-generated invoice. No signature required.</p>
+      <p><b>Subjected to Navi Mumbai Jurisdiction.</b></p>
+    </div>
 
-      <p>
-        <b>
-          Make all cheque or bank transfers payable to:
-          M/s Electrolyte Solutions.
-        </b>
-      </p>
-
-
-
-      <p>
-        This is a computer-generated invoice. No signature required.
-      </p>
-
-      <p>
-        <b>Subjected to Navi Mumbai Jurisdiction.</b>
-      </p>
-
+    <!-- THANK YOU BAR (Only for Symphony) -->
+    <div class="thank-you-bar">
+      THANK YOU FOR YOUR BUSINESS!
     </div>
 
   </div>

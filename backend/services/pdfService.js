@@ -59,84 +59,249 @@ const generatePDF = async (invoiceData) => {
     const page = await browser.newPage();
 
     // Load images
-    const resourcesPath = path.join(__dirname, '../../resources');
+    const resourcesPath = path.join(__dirname, '../resources');
     const logoBase64 = getBase64Image(path.join(resourcesPath, 'company_logo_lighttheme.png'));
     
     let brandLogoBase64 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // transparent spacer
-    let brandLogoWidth = 180;
-    let headerPaddingRight = 210;
+    let brandLogoWidth = 130;
     let brandLogoDisplay = 'block';
 
-    const brand = (invoiceData.brand || '').toLowerCase();
-    if (brand.includes('atomberg')) {
-      brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Atomberg-Logo.png'));
-      brandLogoWidth = 180;
-      headerPaddingRight = 210;
-    } else if (brand.includes('symphony')) {
+    const brandNameLower = (invoiceData.brand || '').toLowerCase();
+    const isSymphony = brandNameLower.includes('symphony');
+
+    if (isSymphony) {
       brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.png'));
-      brandLogoWidth = 140;
-      headerPaddingRight = 170;
+      brandLogoWidth = 120;
     } else {
-      brandLogoDisplay = 'none';
-      headerPaddingRight = 150; // perfectly center text if no brand logo
+      // Default to Atomberg
+      brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Atomberg-Logo.png'));
+      brandLogoWidth = 130;
     }
 
     const qrBase64 = getBase64Image(path.join(resourcesPath, 'qr_code.jpeg'));
     const stampBase64 = getBase64Image(path.join(resourcesPath, 'Stamp_with_sign.PNG'));
 
+    // Format date to DD-MMM-YY format (e.g. 10-Feb-24)
+    const options = { day: '2-digit', month: 'short', year: '2-digit' };
+    const formattedDate = new Date().toLocaleDateString('en-GB', options).replace(/ /g, '-');
+
+    // Build Brand-Specific Metadata
+    let partnerSubtitle = 'Authorised Service Partner of Atomberg Technologies Pvt. Ltd.';
+    let addressLine = 'Plot 70, Sector 1 Road No. 1, Ghansoli, Navi Mumbai, Maharashtra - 400701';
+    let phoneLine = '+91 8090712828 / 8104096232';
+    let emailLine = 'electrolytesolnservice@gmail.com';
+    let gstinLine = '';
+    
+    let bankDetailsContent = `
+      <p>A/c Name: M/s Electrolyte Solutions</p>
+      <p>Bank: Axis Bank Ltd.</p>
+      <p>Account No.: 921000031635999</p>
+      <p>IFSC: UTIB0001622</p>
+      <p>Branch: Mulund East</p>
+    `;
+
+    let detailsBoxContent = '';
+    let tableMarkup = '';
+    let totalsBlock = '';
+    let wordsText = '';
+    let payableNote = 'Make all cheque or bank transfers payable to: M/s Electrolyte Solutions.';
+    let warrantyNote = 'Note: Spare/Products are warranted for a period of 1 year from the date of handing over to the customer.';
+
+    if (isSymphony) {
+      partnerSubtitle = '(Authorised Service Partner of Symphony Limited.)';
+      addressLine = 'Plot 223, Road Number 1, Sector 1, Ghansoli, Navi Mumbai, Maharashtra - 400701';
+      phoneLine = '+91 8090712828 / 9029352208';
+      emailLine = 'contact@electrolytesoln.com';
+      gstinLine = '<p>GSTIN: 27AJYPY7934L1ZS</p>';
+      
+      bankDetailsContent = `
+        <p>Name : M/s Electrolyte Solutions</p>
+        <p>Bank Name : Axis Bank Ltd.</p>
+        <p>Account No. : 921020033685999</p>
+        <p>IFSC Code : UTIB0001622</p>
+        <p>Account Type : Current Account</p>
+        <p>Branch : Mulund East</p>
+      `;
+
+      detailsBoxContent = `
+        <div class="details-container">
+          <div class="col-left">
+            <p><b>BILL TO:</b></p>
+            <p>${invoiceData.customerName || 'Mr. Milan Karpe'}</p>
+            <p>Add:- ${invoiceData.customerAddress || 'Neelkanth Palm, Krishna-B, 1903, Vidyapeeth, Kapurbawdi Junction, Thane West- 400610'}</p>
+            <p>Mobile No. ${invoiceData.customerPhone || '9029352208'}</p>
+          </div>
+          <div class="col-right">
+            <p><b>TICKET:</b> ${invoiceData.caseId || '846724'}</p>
+            <p><b>INVOICE NO. :</b> ${invoiceData.invoiceNumber}</p>
+            <p><b>BILL DATE :</b> ${formattedDate}</p>
+            <p><b>FOR :</b> Symphony Products Service</p>
+            <p><b>GSITN :</b> ${formattedDate}</p>
+          </div>
+        </div>
+      `;
+
+      // Build Symphony 5-column table
+      tableMarkup = `
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="text-align: left; width: 50%;">DESCRIPTION</th>
+              <th style="text-align: center; width: 10%;">GST</th>
+              <th style="text-align: center; width: 10%;">QUANTITY</th>
+              <th style="text-align: right; width: 15%;">RATE</th>
+              <th style="text-align: right; width: 15%;">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      (invoiceData.items || []).forEach((item, index) => {
+        const rate = parseFloat(item.rate || 0);
+        const amount = parseFloat(item.amount || (item.quantity * rate));
+        tableMarkup += `
+          <tr>
+            <td style="text-align: left;">
+              <b>${index + 1}. Material</b><br>
+              <span style="padding-left: 15px; display: inline-block;">${item.description || item.name}</span>
+            </td>
+            <td style="text-align: center;">18%</td>
+            <td style="text-align: center;">${item.quantity || item.qty}</td>
+            <td style="text-align: right;">₹${rate.toFixed(2)}</td>
+            <td style="text-align: right;">₹${amount.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      const sCharge = parseFloat(invoiceData.serviceCharge || 0);
+      if (sCharge > 0) {
+        tableMarkup += `
+          <tr>
+            <td style="text-align: left;">
+              <b>2. Service Charge</b>
+            </td>
+            <td style="text-align: center;">18%</td>
+            <td style="text-align: center;">1</td>
+            <td style="text-align: right;">₹${sCharge.toFixed(2)}</td>
+            <td style="text-align: right;">₹${sCharge.toFixed(2)}</td>
+          </tr>
+        `;
+      }
+
+      tableMarkup += `
+          <tr class="grand-total-row">
+            <td colspan="4" style="text-align: right; font-weight: bold; border-right: none; font-size: 13px;">GRAND TOTAL</td>
+            <td style="text-align: right; font-weight: bold; border-left: none; font-size: 13px;">₹${parseFloat(invoiceData.totalAmount).toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
+      `;
+
+      const rawWordsText = numberToWords(invoiceData.totalAmount);
+      // Prepend "In Words :-"
+      wordsText = `<b>In Words :-</b> ${rawWordsText}`;
+      payableNote = 'Make all Cheque or bank transfer payable to Name : M/s Electrolyte Solutions.';
+      warrantyNote = 'Note:- Spare/Products Are Warranted for a period of 10 Days From the Date of Handing Over of the Spare/Products to the Customer.';
+
+    } else {
+      // Default / Atomberg layout
+      detailsBoxContent = `
+        <div class="details-container">
+          <div class="col-left">
+            <p><b>BILL TO:</b> ${invoiceData.customerName || 'Jay'}</p>
+            <p><b>Email:</b> ${invoiceData.customerEmail || 'jay@123'}</p>
+            <p><b>INVOICE NO:</b> ${invoiceData.invoiceNumber}</p>
+            <p><b>BRAND:</b> ${invoiceData.brand || 'Atomberg'}</p>
+            <p><b>SERIAL:</b> ${invoiceData.serialNumber || 'ma'}</p>
+            <p><b>BILL DATE:</b> ${formattedDate}</p>
+          </div>
+          <div class="col-right">
+            <p><b>Prepared By:</b> ${invoiceData.preparedBy || 'DIPAK MOHITE'}</p>
+            <p><b>Case ID:</b> ${invoiceData.caseId || 'test'}</p>
+            <p><b>FOR:</b> Atomberg Products Service</p>
+          </div>
+        </div>
+      `;
+
+      // Build Atomberg 4-column table
+      tableMarkup = `
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="text-align: left; width: 50%;">DESCRIPTION</th>
+              <th style="text-align: center; width: 10%;">QUANTITY</th>
+              <th style="text-align: center; width: 20%;">RATE (incl. tax)</th>
+              <th style="text-align: center; width: 20%;">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      (invoiceData.items || []).forEach(item => {
+        const rate = parseFloat(item.rate || 0);
+        const amount = parseFloat(item.amount || (item.quantity * rate));
+        tableMarkup += `
+          <tr>
+            <td style="text-align: left;">${item.description || item.name}</td>
+            <td style="text-align: center;">${item.quantity || item.qty}</td>
+            <td style="text-align: center;">Rs.${rate.toFixed(2)}</td>
+            <td style="text-align: center;">Rs.${amount.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      tableMarkup += `
+          </tbody>
+        </table>
+      `;
+
+      totalsBlock = `
+        <div class="totals-container">
+          <div class="totals-row">
+            <span>SUBTOTAL:</span>
+            <span>Rs.${parseFloat(invoiceData.subTotal).toFixed(2)}</span>
+          </div>
+          <div class="totals-row">
+            <span>SERVICE CHARGE:</span>
+            <span>Rs.${parseFloat(invoiceData.serviceCharge || 0).toFixed(2)}</span>
+          </div>
+          <div class="totals-row grand-total">
+            <span>GRAND TOTAL:</span>
+            <span>Rs.${parseFloat(invoiceData.totalAmount).toFixed(2)}</span>
+          </div>
+        </div>
+      `;
+
+      const rawWordsText = numberToWords(invoiceData.totalAmount);
+      wordsText = `<b>IN WORDS:</b> ${rawWordsText.toUpperCase()}`;
+    }
+
     // Load template
     const templatePath = path.join(__dirname, '../template.html');
     let htmlContent = fs.readFileSync(templatePath, 'utf8');
 
-    // Prepare table rows
-    const tableRows = (invoiceData.items || []).map(item => `
-      <tr>
-        <td>${item.name || item.description}</td>
-        <td>${item.quantity || item.qty}</td>
-        <td>${Number(item.rate).toFixed(2)}</td>
-        <td>${Number(item.amount || (item.quantity * item.rate)).toFixed(2)}</td>
-      </tr>
-    `).join('');
-
-    // Format date
-    const formattedDate = new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-
-    // Prepare GST row
-    const gstRow = (invoiceData.gstAmount && invoiceData.gstAmount > 0) ? `
-      <tr>
-        <td>GST (18%):</td>
-        <td>Rs. ${Number(invoiceData.gstAmount).toFixed(2)}</td>
-      </tr>
-    ` : '';
-
     // Replace placeholders
     const replacements = {
+      '{{brandClass}}': isSymphony ? 'brand-symphony' : 'brand-atomberg',
       '{{logoBase64}}': logoBase64,
       '{{brandLogoBase64}}': brandLogoBase64,
       '{{brandLogoWidth}}': brandLogoWidth,
       '{{brandLogoDisplay}}': brandLogoDisplay,
-      '{{headerPaddingRight}}': headerPaddingRight,
       '{{qrBase64}}': qrBase64,
       '{{stampBase64}}': stampBase64,
-      '{{customerName}}': invoiceData.customerName || 'N/A',
-      '{{customerEmail}}': invoiceData.customerEmail || 'N/A',
-      '{{warrantyType}}': invoiceData.warrantyType || 'N/A',
-      '{{invoiceNumber}}': invoiceData.invoiceNumber || 'N/A',
-      '{{date}}': formattedDate,
-      '{{caseId}}': invoiceData.caseId || 'N/A',
-      '{{brand}}': invoiceData.brand || 'N/A',
-      '{{serialNumber}}': invoiceData.serialNumber || 'N/A',
-      '{{preparedBy}}': invoiceData.preparedBy || 'N/A',
-      '{{tableRows}}': tableRows,
-      '{{subTotal}}': Number(invoiceData.subTotal).toFixed(2),
-      '{{gstRow}}': gstRow,
-      '{{serviceCharge}}': Number(invoiceData.serviceCharge || 0).toFixed(2),
-      '{{grandTotal}}': Number(invoiceData.totalAmount).toFixed(2),
-      '{{totalInWords}}': numberToWords(invoiceData.totalAmount)
+      '{{partnerSubtitle}}': partnerSubtitle,
+      '{{addressLine}}': addressLine,
+      '{{phoneLine}}': phoneLine,
+      '{{emailLine}}': emailLine,
+      '{{gstinLine}}': gstinLine,
+      '{{detailsBoxContent}}': detailsBoxContent,
+      '{{tableMarkup}}': tableMarkup,
+      '{{totalsBlock}}': totalsBlock,
+      '{{wordsText}}': wordsText,
+      '{{bankDetailsContent}}': bankDetailsContent,
+      '{{payableNote}}': payableNote,
+      '{{warrantyNote}}': warrantyNote,
+      '{{signatoryTitle}}': isSymphony ? 'Authorized Signatory<br>For Electrolyte Solutions' : 'Authorized Signatory<br>For Electrolyte Solutions'
     };
 
     for (const [placeholder, value] of Object.entries(replacements)) {
@@ -163,5 +328,3 @@ const generatePDF = async (invoiceData) => {
 };
 
 module.exports = { generatePDF };
-
-

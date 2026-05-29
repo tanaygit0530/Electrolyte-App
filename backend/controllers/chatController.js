@@ -1,15 +1,14 @@
-const supabase = require('../config/supabaseClient');
-const Component = require('../models/Component');
+const { pool } = require('../config/neondb');
 require('dotenv').config();
 
-const formatComponent = (comp) => ({
-  id: comp._id.toString(),
-  part_name: comp.name,
-  part_code: comp.code,
-  model: comp.description || 'N/A',
-  price: comp.customerPrice || 0,
-  stock_quantity: 10, // Default fallback
-  status: comp.active ? 'Available' : 'Out of Stock'
+const formatComponent = (prod) => ({
+  id: String(prod.id),
+  part_name: prod.product_name,
+  part_code: prod.product_code,
+  model: prod.description || 'N/A',
+  price: parseFloat(prod.product_price) || 0,
+  stock_quantity: prod.stock_quantity !== undefined ? prod.stock_quantity : 0,
+  status: prod.stock_quantity > 0 ? 'Available' : 'Out of Stock'
 });
 
 exports.processChat = async (req, res) => {
@@ -26,41 +25,37 @@ exports.processChat = async (req, res) => {
     console.log("User Message:", userMessage);
 
     // Handle Session
-    if (!sessionId && supabase) {
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('chat_sessions')
-        .insert([{ title: userMessage.substring(0, 30) + (userMessage.length > 30 ? '...' : '') }])
-        .select()
-        .single();
-      
-      if (sessionError) {
-        console.error("Session Create Error:", sessionError);
-      } else {
-        sessionId = sessionData.id;
-      }
+    if (!sessionId) {
+      const title = userMessage.substring(0, 30) + (userMessage.length > 30 ? '...' : '');
+      const sessionRes = await pool.query(
+        'INSERT INTO chat_sessions (title) VALUES ($1) RETURNING *',
+        [title]
+      );
+      sessionId = sessionRes.rows[0].id;
+    } else {
+      await pool.query(
+        'UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [sessionId]
+      );
     }
 
     // Save User Message
-    if (sessionId && supabase) {
-      await supabase.from('chat_messages').insert([
-        { session_id: sessionId, role: 'user', content: userMessage }
-      ]);
-      // Update session timestamp
-      await supabase.from('chat_sessions').update({ updated_at: new Date() }).eq('id', sessionId);
-    }
+    await pool.query(
+      'INSERT INTO chat_messages (session_id, role, content) VALUES ($1, $2, $3)',
+      [sessionId, 'user', userMessage]
+    );
 
-    // Search MongoDB Components
-    // Escape regex characters in userMessage just in case, but standard regex search works for most inputs.
-    const escapedMessage = userMessage.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regexQuery = { $regex: escapedMessage, $options: 'i' };
-    
-    const components = await Component.find({
-      $or: [
-        { name: regexQuery },
-        { code: regexQuery },
-        { description: regexQuery }
-      ]
-    }).limit(20);
+    // Search NeonDB Products
+    const queryStr = `%${userMessage}%`;
+    const prodRes = await pool.query(
+      `SELECT * FROM products 
+       WHERE product_name ILIKE $1 
+          OR product_code ILIKE $1 
+          OR description ILIKE $1 
+       LIMIT 20`,
+      [queryStr]
+    );
+    const components = prodRes.rows;
 
     let replyMessage = "";
     let formattedComponents = [];
@@ -73,11 +68,10 @@ exports.processChat = async (req, res) => {
     }
 
     // Save Assistant Response
-    if (sessionId && supabase) {
-      await supabase.from('chat_messages').insert([
-        { session_id: sessionId, role: 'assistant', content: replyMessage }
-      ]);
-    }
+    await pool.query(
+      'INSERT INTO chat_messages (session_id, role, content) VALUES ($1, $2, $3)',
+      [sessionId, 'assistant', replyMessage]
+    );
 
     res.json({ 
       reply: replyMessage, 
@@ -95,15 +89,8 @@ exports.processChat = async (req, res) => {
 
 exports.getSessions = async (req, res) => {
   try {
-    if (!supabase) {
-      return res.json([]);
-    }
-    const { data, error } = await supabase
-      .from('chat_sessions')
-      .select('*')
-      .order('updated_at', { ascending: false });
-    if (error) throw error;
-    res.json(data);
+    const result = await pool.query('SELECT * FROM chat_sessions ORDER BY updated_at DESC');
+    res.json(result.rows);
   } catch (err) {
     console.error("Get Sessions Error:", err);
     res.status(500).json({ error: "Failed to fetch chat history" });
@@ -113,19 +100,13 @@ exports.getSessions = async (req, res) => {
 exports.getSessionMessages = async (req, res) => {
   const { sessionId } = req.params;
   try {
-    if (!supabase) {
-      return res.json([]);
-    }
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    res.json(data);
+    const result = await pool.query(
+      'SELECT * FROM chat_messages WHERE session_id = $1 ORDER BY created_at ASC',
+      [sessionId]
+    );
+    res.json(result.rows);
   } catch (err) {
     console.error("Get Messages Error:", err);
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 };
-

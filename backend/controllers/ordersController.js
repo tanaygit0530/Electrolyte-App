@@ -1,130 +1,91 @@
-const supabase = require('../config/supabaseClient');
-const Component = require('../models/Component');
-const Order = require('../models/Order');
+const { pool } = require('../config/neondb');
+
+const formatOrder = (order) => ({
+  id: String(order.id),
+  part_code: order.part_code,
+  part_name: order.part_name,
+  quantity: order.quantity,
+  price: parseFloat(order.price) || 0,
+  gst: parseFloat(order.gst) || 0,
+  total_amount: parseFloat(order.total_amount) || 0,
+  status: order.status,
+  created_at: order.created_at,
+  updated_at: order.updated_at
+});
 
 exports.createOrder = async (req, res) => {
   const { part_code, quantity } = req.body;
+  let client;
 
   try {
-    if (supabase) {
-      // 1. Fetch part details
-      const { data: part, error: fetchError } = await supabase
-        .from('spare_parts')
-        .select('*')
-        .eq('part_code', part_code)
-        .single();
+    client = await pool.connect();
+    await client.query('BEGIN');
 
-      if (!fetchError && part) {
-        // 2. Check stock
-        if (part.stock_quantity < quantity) {
-          return res.status(400).json({ message: `Insufficient stock. Only ${part.stock_quantity} available.` });
-        }
+    // 1. Fetch product/part details
+    const partRes = await client.query('SELECT * FROM products WHERE product_code = $1 FOR UPDATE', [part_code]);
+    const part = partRes.rows[0];
 
-        // 3. Calculate billing
-        const price = parseFloat(part.price);
-        const subtotal = price * quantity;
-        const gst = subtotal * 0.18;
-        const total_amount = subtotal + gst;
-
-        // 4. Create order
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .insert([
-            {
-              part_code: part.part_code,
-              part_name: part.part_name,
-              quantity: quantity,
-              price: price,
-              gst: gst,
-              total_amount: total_amount,
-              status: 'Confirmed'
-            }
-          ])
-          .select()
-          .single();
-
-        if (orderError) throw orderError;
-
-        // 5. Update stock
-        const newStock = part.stock_quantity - quantity;
-        const newStatus = newStock === 0 ? 'Out of Stock' : (newStock < 5 ? 'Low' : 'Available');
-
-        const { error: updateError } = await supabase
-          .from('spare_parts')
-          .update({ stock_quantity: newStock, status: newStatus })
-          .eq('part_code', part_code);
-
-        if (updateError) throw updateError;
-
-        return res.status(201).json({
-          message: 'Order confirmed',
-          order: order
-        });
-      }
-    }
-
-    // --- MongoDB Fallback ---
-    console.log("Supabase unavailable or part not found in Supabase. Using MongoDB for order.");
-    const part = await Component.findOne({ code: part_code });
     if (!part) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Part not found' });
     }
 
-    const currentStock = part.stockQuantity !== undefined ? part.stockQuantity : 10;
-    if (currentStock < quantity) {
-      return res.status(400).json({ message: `Insufficient stock. Only ${currentStock} available.` });
+    // 2. Check stock
+    if (part.stock_quantity < quantity) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: `Insufficient stock. Only ${part.stock_quantity} available.` });
     }
 
-    // Calculate billing
-    const price = parseFloat(part.customerPrice || 0);
+    // 3. Calculate billing
+    const price = parseFloat(part.product_price || 0);
     const subtotal = price * quantity;
     const gst = subtotal * 0.18;
     const total_amount = subtotal + gst;
 
-    // Create order
-    const order = new Order({
-      part_code: part.code,
-      part_name: part.name,
-      quantity: quantity,
-      price: price,
-      gst: gst,
-      total_amount: total_amount,
-      status: 'Confirmed'
-    });
-    await order.save();
+    // 4. Create order
+    const orderRes = await client.query(
+      `INSERT INTO orders (part_code, part_name, quantity, price, gst, total_amount, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Confirmed')
+       RETURNING *`,
+      [part.product_code, part.product_name, quantity, price, gst, total_amount]
+    );
+    const order = orderRes.rows[0];
 
-    // Update stock
-    part.stockQuantity = currentStock - quantity;
-    await part.save();
+    // 5. Update stock
+    const newStock = part.stock_quantity - quantity;
+    await client.query(
+      'UPDATE products SET stock_quantity = $1, updated_at = CURRENT_TIMESTAMP WHERE product_code = $2',
+      [newStock, part_code]
+    );
 
-    res.status(201).json({
+    await client.query('COMMIT');
+
+    return res.status(201).json({
       message: 'Order confirmed',
-      order: order
+      order: formatOrder(order)
     });
 
   } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Error rolling back order creation transaction:', rollbackError);
+      }
+    }
     console.error("Order Creation Error:", error);
     res.status(500).json({ error: error.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 };
 
 exports.getAllOrders = async (req, res) => {
   try {
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        return res.status(200).json(data);
-      }
-    }
-
-    // --- MongoDB Fallback ---
-    console.log("Supabase unavailable. Fetching orders from MongoDB.");
-    const orders = await Order.find({}).sort({ created_at: -1 });
-    res.status(200).json(orders);
+    const result = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+    res.status(200).json(result.rows.map(formatOrder));
   } catch (error) {
     console.error("Get All Orders Error:", error);
     res.status(500).json({ error: error.message });

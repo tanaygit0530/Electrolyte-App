@@ -11,13 +11,8 @@ const authRoutes = require('./routes/authRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
-const connectMongoDB = require('./config/mongodb');
-
 const app = express();
 const PORT = process.env.PORT || 5001;
-
-// Connect to MongoDB for auth & invoices (Supabase config stays in parts/chat)
-connectMongoDB();
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));

@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { pool } = require('../config/neondb');
 
 const login = async (req, res) => {
   try {
@@ -10,21 +10,22 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Please enter an email and password' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const userQuery = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    const user = userQuery.rows[0];
 
     if (!user) {
       return res.status(401).json({ error: 'No user found' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid password' });
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fallback_secret',
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'prasadinternatelectrolyte',
       { expiresIn: '1d' }
     );
 
@@ -32,7 +33,7 @@ const login = async (req, res) => {
       message: 'Logged in successfully',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         role: user.role,
       }

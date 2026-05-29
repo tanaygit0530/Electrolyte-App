@@ -1,22 +1,23 @@
-const Component = require('../models/Component');
+const { pool } = require('../config/neondb');
 
-// Map MongoDB Component to match legacy format for the Flutter app
-const formatComponent = (comp) => ({
-  id: comp._id.toString(),
-  part_name: comp.name,
-  part_code: comp.code,
-  model: comp.description || 'N/A',
-  price: comp.customerPrice || 0,
-  stock_quantity: comp.stockQuantity !== undefined ? comp.stockQuantity : 10,
-  status: comp.active ? (comp.stockQuantity > 0 ? 'Available' : 'Out of Stock') : 'Out of Stock'
+// Map NeonDB product row to match legacy format for the Flutter app
+const formatComponent = (prod) => ({
+  id: String(prod.id),
+  part_name: prod.product_name,
+  part_code: prod.product_code,
+  model: prod.description || 'N/A',
+  price: parseFloat(prod.product_price) || 0,
+  stock_quantity: prod.stock_quantity !== undefined ? prod.stock_quantity : 0,
+  status: prod.stock_quantity > 0 ? 'Available' : 'Out of Stock'
 });
 
 exports.getAllParts = async (req, res) => {
   try {
-    const components = await Component.find({});
-    const formattedData = components.map(formatComponent);
+    const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
+    const formattedData = result.rows.map(formatComponent);
     res.status(200).json(formattedData);
   } catch (error) {
+    console.error("Get All Parts Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -24,14 +25,16 @@ exports.getAllParts = async (req, res) => {
 exports.getPartByCode = async (req, res) => {
   const { code } = req.params;
   try {
-    const comp = await Component.findOne({ code });
+    const result = await pool.query('SELECT * FROM products WHERE product_code = $1', [code]);
+    const prod = result.rows[0];
 
-    if (!comp) {
+    if (!prod) {
       return res.status(404).json({ message: 'Part not found' });
     }
     
-    res.status(200).json(formatComponent(comp));
+    res.status(200).json(formatComponent(prod));
   } catch (error) {
+    console.error("Get Part By Code Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -44,16 +47,16 @@ exports.searchParts = async (req, res) => {
   }
 
   try {
-    const components = await Component.find({
-      $or: [
-        { name: { $regex: q, $options: 'i' } },
-        { code: { $regex: q, $options: 'i' } }
-      ]
-    }).limit(5);
+    const queryStr = `%${q}%`;
+    const result = await pool.query(
+      'SELECT * FROM products WHERE product_name ILIKE $1 OR product_code ILIKE $1 LIMIT 5',
+      [queryStr]
+    );
 
-    const formattedData = components.map(formatComponent);
+    const formattedData = result.rows.map(formatComponent);
     res.status(200).json(formattedData);
   } catch (error) {
+    console.error("Search Parts Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
