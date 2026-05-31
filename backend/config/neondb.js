@@ -14,6 +14,11 @@ const pool = new Pool({
   }
 });
 
+// Prevent backend crash on idle database connection errors/closures
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle NeonDB client:', err);
+});
+
 module.exports = {
   query: (text, params) => pool.query(text, params),
   pool
