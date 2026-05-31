@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_core/shared_core.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/upload_provider.dart';
@@ -8,6 +9,8 @@ import 'dashboard_screen.dart';
 import 'stock_upload_screen.dart';
 import 'price_upload_screen.dart';
 import 'upload_history_screen.dart';
+import 'admin_chatbot_screen.dart';
+import 'admin_billing_screen.dart';
 import '../utils/theme.dart';
 
 class MainWorkspace extends StatefulWidget {
@@ -30,6 +33,10 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return 'Price Catalogue Update';
       case 3:
         return 'Historical Upload Logs';
+      case 4:
+        return 'Chatbot AI Assistant';
+      case 5:
+        return 'Invoice Generator';
       default:
         return 'Admin Control Panel';
     }
@@ -58,6 +65,10 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       case 3:
         dashboard.fetchHistories();
         break;
+      case 4:
+        Provider.of<ChatHistoryProvider>(context, listen: false).fetchSessions();
+        Provider.of<ChatProvider>(context, listen: false).startNewChat();
+        break;
     }
   }
 
@@ -73,6 +84,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return upload.isParsing || upload.isUploading;
       case 3:
         return dashboard.isLoading;
+      case 4:
+        return Provider.of<ChatHistoryProvider>(context).isLoading || Provider.of<ChatProvider>(context).isLoading;
       default:
         return false;
     }
@@ -125,6 +138,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       const StockUploadScreen(),
       const PriceUploadScreen(),
       const UploadHistoryScreen(),
+      const AdminChatbotScreen(),
+      const AdminBillingScreen(),
     ];
 
     final bool isLoading = _isPageLoading(context);

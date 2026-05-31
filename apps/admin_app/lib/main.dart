@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_core/shared_core.dart';
 import 'providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/upload_provider.dart';
@@ -43,6 +44,8 @@ class _ElectrolyteAdminAppAppState extends State<ElectrolyteAdminApp> {
         ChangeNotifierProvider<AuthProvider>.value(value: _authProvider),
         ChangeNotifierProvider<DashboardProvider>.value(value: _dashboardProvider),
         ChangeNotifierProvider<UploadProvider>.value(value: _uploadProvider),
+        ChangeNotifierProvider<ChatProvider>(create: (_) => ChatProvider()),
+        ChangeNotifierProvider<ChatHistoryProvider>(create: (_) => ChatHistoryProvider()),
       ],
       child: MaterialApp(
         title: 'Electrolyte Admin Portal',
