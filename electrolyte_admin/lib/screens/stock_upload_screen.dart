@@ -248,9 +248,17 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                       children: [
                         const Icon(Icons.error_outline, color: AdminTheme.errorColor, size: 48),
                         const SizedBox(height: 16),
-                        Text(
-                          upload.errorMessage!,
-                          style: const TextStyle(color: AdminTheme.textPrimary, fontSize: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Text(
+                            upload.errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AdminTheme.textPrimary, 
+                              fontSize: 15,
+                              height: 1.4,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton(
