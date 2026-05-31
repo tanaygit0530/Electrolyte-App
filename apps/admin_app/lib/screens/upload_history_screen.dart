@@ -60,54 +60,11 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(40.0),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Historical Upload Logs',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AdminTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Complete audit log records of administrative spreadsheet executions and synchronization statistics',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AdminTheme.textSecondary.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Refresh Logs Button
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.darkSurface,
-                    foregroundColor: AdminTheme.accentTeal,
-                    side: BorderSide(color: AdminTheme.accentTeal.withOpacity(0.3)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () => dashboard.fetchHistories(),
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Refresh Logs', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Controls: Search & Tabs
+            // Controls: Search & Dynamic Tabs
             Row(
               children: [
                 // Search Input
@@ -120,31 +77,31 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                     },
                     decoration: const InputDecoration(
                       hintText: 'Search logs by file name or administrative email...',
-                      prefixIcon: Icon(Icons.search, size: 18),
+                      prefixIcon: Icon(Icons.search_rounded, size: 18, color: AdminTheme.textSecondary),
                     ),
                   ),
                 ),
                 const SizedBox(width: 32),
 
-                // Beautiful custom tab bar indicators
+                // Beautiful custom tab bar indicators matching specs
                 Container(
                   width: 380,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AdminTheme.darkSurface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AdminTheme.textSecondary.withOpacity(0.15)),
+                    color: AdminTheme.sidebarBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AdminTheme.borderColor),
                   ),
                   child: TabBar(
                     controller: _tabController,
                     indicator: BoxDecoration(
-                      gradient: AdminTheme.tealGradient,
-                      borderRadius: BorderRadius.circular(6),
+                      color: AdminTheme.primaryYellow,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: Colors.white,
+                    labelColor: AdminTheme.darkBackground,
                     unselectedLabelColor: AdminTheme.textSecondary,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Poppins'),
                     dividerColor: Colors.transparent,
                     padding: const EdgeInsets.all(4),
                     tabs: const [
@@ -157,10 +114,10 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
             ),
             const SizedBox(height: 24),
 
-            // Logs Tables Views
+            // Logs Tables Views inside a card
             Expanded(
               child: Container(
-                decoration: AdminTheme.glassBox(opacity: 0.1),
+                decoration: AdminTheme.glassBox(opacity: 0.15),
                 child: TabBarView(
                   controller: _tabController,
                   children: [
@@ -181,7 +138,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
 
   Widget _buildLogsTable(List<UploadHistory> logs, bool loading, String type) {
     if (loading && logs.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AdminTheme.accentTeal));
+      return const Center(child: CircularProgressIndicator(color: AdminTheme.primaryYellow));
     }
 
     if (logs.isEmpty) {
@@ -189,11 +146,11 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, color: AdminTheme.textSecondary.withOpacity(0.4), size: 48),
+            Icon(Icons.history_toggle_off_rounded, color: AdminTheme.textSecondary.withOpacity(0.4), size: 48),
             const SizedBox(height: 16),
             const Text(
               'No upload history logs recorded in database.',
-              style: TextStyle(color: AdminTheme.textSecondary, fontSize: 15),
+              style: TextStyle(color: AdminTheme.textSecondary, fontSize: 15, fontFamily: 'Poppins'),
             ),
           ],
         ),
@@ -202,46 +159,47 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
 
     return Column(
       children: [
-        // Column headers
+        // Column headers - Custom Electrolyte Yellow Styling
         Container(
-          color: AdminTheme.darkSurface.withOpacity(0.5),
+          color: AdminTheme.darkSurface,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: const Row(
             children: [
-              SizedBox(width: 50, child: Text('ID', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-              Expanded(flex: 3, child: Text('Spreadsheet File Name', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-              Expanded(flex: 2, child: Text('Executed By', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-              SizedBox(width: 100, child: Text('Total Rows', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary), textAlign: TextAlign.right)),
-              SizedBox(width: 100, child: Text('Success', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary), textAlign: TextAlign.right)),
-              SizedBox(width: 100, child: Text('Errors', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary), textAlign: TextAlign.right)),
-              Expanded(flex: 2, child: Text('Sync Timestamp', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary), textAlign: TextAlign.right)),
+              SizedBox(width: 50, child: Text('ID', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13))),
+              Expanded(flex: 3, child: Text('Spreadsheet File Name', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13))),
+              Expanded(flex: 2, child: Text('Executed By', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13))),
+              SizedBox(width: 100, child: Text('Total Rows', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13), textAlign: TextAlign.right)),
+              SizedBox(width: 100, child: Text('Success', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13), textAlign: TextAlign.right)),
+              SizedBox(width: 100, child: Text('Errors', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13), textAlign: TextAlign.right)),
+              Expanded(flex: 2, child: Text('Sync Timestamp', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryYellow, fontFamily: 'Poppins', fontSize: 13), textAlign: TextAlign.right)),
             ],
           ),
         ),
 
-        const Divider(height: 1),
+        const Divider(height: 1, color: AdminTheme.borderColor),
 
-        // Logs rows
+        // Logs rows with alternating table backgrounds
         Expanded(
           child: ListView.separated(
             itemCount: logs.length,
-            separatorBuilder: (_, _) => Divider(height: 1, color: AdminTheme.textSecondary.withOpacity(0.08)),
+            separatorBuilder: (_, _) => const Divider(height: 1, color: AdminTheme.borderColor),
             itemBuilder: (context, idx) {
               final log = logs[idx];
               final double successRate = log.totalRows > 0 ? (log.updatedRows / log.totalRows) : 0;
               final Color progressColor = successRate == 1.0 
                   ? AdminTheme.accentEmerald 
-                  : (successRate > 0.8 ? AdminTheme.accentTeal : AdminTheme.errorColor);
+                  : (successRate > 0.8 ? AdminTheme.primaryYellow : AdminTheme.errorColor);
 
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                color: idx % 2 == 0 ? AdminTheme.darkSurface.withOpacity(0.3) : Colors.transparent,
                 child: Row(
                   children: [
                     SizedBox(
                       width: 50,
                       child: Text(
                         log.id.toString(), 
-                        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13),
+                        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13, fontFamily: 'Poppins'),
                       ),
                     ),
                     Expanded(
@@ -257,7 +215,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                           Expanded(
                             child: Text(
                               log.fileName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textPrimary, fontSize: 14),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14, fontFamily: 'Poppins'),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -268,7 +226,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                       flex: 2,
                       child: Text(
                         log.uploadedBy,
-                        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13),
+                        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13, fontFamily: 'Poppins'),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -276,7 +234,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                       width: 100,
                       child: Text(
                         log.totalRows.toString(),
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AdminTheme.textPrimary, fontSize: 13),
+                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 13, fontFamily: 'Poppins'),
                         textAlign: TextAlign.right,
                       ),
                     ),
@@ -284,7 +242,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                       width: 100,
                       child: Text(
                         log.updatedRows.toString(),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.accentEmerald, fontSize: 13),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.accentEmerald, fontSize: 13, fontFamily: 'Poppins'),
                         textAlign: TextAlign.right,
                       ),
                     ),
@@ -296,6 +254,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                           fontWeight: FontWeight.bold, 
                           color: log.failedRows > 0 ? AdminTheme.errorColor : AdminTheme.textSecondary,
                           fontSize: 13,
+                          fontFamily: 'Poppins',
                         ),
                         textAlign: TextAlign.right,
                       ),
@@ -304,7 +263,7 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
                       flex: 2,
                       child: Text(
                         _formatDate(log.uploadedAt),
-                        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13),
+                        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13, fontFamily: 'Poppins'),
                         textAlign: TextAlign.right,
                       ),
                     ),

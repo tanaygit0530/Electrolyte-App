@@ -1,60 +1,72 @@
 import 'package:flutter/material.dart';
 
 class AdminTheme {
-  // Theme Color System
-  static const Color darkBackground = Color(0xFF0F172A); // Slate 900
-  static const Color darkSurface = Color(0xFF1E293B);    // Slate 800
-  static const Color darkSurfaceLight = Color(0xFF334155); // Slate 700
-  static const Color primaryColor = Color(0xFF0D9488);    // Teal 600
-  static const Color accentTeal = Color(0xFF14B8A6);      // Teal 500
-  static const Color accentBlue = Color(0xFF3B82F6);      // Blue 500
-  static const Color accentEmerald = Color(0xFF10B981);   // Emerald 500
-  static const Color errorColor = Color(0xFFEF4444);      // Red 500
-  static const Color textPrimary = Color(0xFFF8FAFC);     // Slate 50
-  static const Color textSecondary = Color(0xFF94A3B8);   // Slate 400
+  // Brand New Color Spec System (Dark Navy Blue + Electrolyte Yellow)
+  static const Color darkBackground = Color(0xFF07162F);  // Primary Background
+  static const Color secondaryBg = Color(0xFF0B1D3D);     // Secondary Background
+  static const Color sidebarBg = Color(0xFF081528);       // Sidebar Background
+  static const Color darkSurface = Color(0xFF10254D);     // Card Background
+  static const Color darkSurfaceLight = Color(0xFF1A3769); // Border Color fallback
+  static const Color borderColor = Color(0xFF1A3769);     // Border Color
+  
+  // Brand Accents - Upgraded to a less bright, premium mustard-gold tone
+  static const Color primaryYellow = Color(0xFFC9A200);   // Deeper Premium Mustard Gold
+  static const Color secondaryYellow = Color(0xFFB08C00); // Darker Gold for Gradients
+  static const Color hoverYellow = Color(0xFFE5B800);     // Lighter Gold on Hover
+  
+  // Backward compatibility alias definitions (now cleanly mapped to the new gold tones)
+  static const Color primaryColor = primaryYellow;
+  static const Color accentTeal = primaryYellow;
+  static const Color accentBlue = secondaryYellow;
+  static const Color accentEmerald = Color(0xFF22C55E);    // Success Green
+  static const Color successColor = Color(0xFF22C55E);     // Success Green
+  static const Color errorColor = Color(0xFFEF4444);       // Error Red
+  static const Color warningColor = Color(0xFFF59E0B);     // Warning Orange
+  static const Color textPrimary = Color(0xFFFFFFFF);      // Text Primary
+  static const Color textSecondary = Color(0xFFB7C3D6);    // Text Secondary
 
-  // Standard Gradients
+  // Standard Gradients matching specifications
   static const LinearGradient tealGradient = LinearGradient(
-    colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
+    colors: [primaryYellow, secondaryYellow],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient blueGradient = LinearGradient(
-    colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+    colors: [secondaryYellow, hoverYellow],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient emeraldGradient = LinearGradient(
-    colors: [Color(0xFF059669), Color(0xFF10B981)],
+    colors: [Color(0xFF22C55E), Color(0xFF4ADE80)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient darkGlassGradient = LinearGradient(
-    colors: [Color(0x331E293B), Color(0x0A0F172A)],
+    colors: [Color(0x3310254D), Color(0x0A07162F)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   // Box Decoration utility for frosted glass look
   static BoxDecoration glassBox({
-    Color? borderColor,
+    Color? customBorderColor,
     double radius = 12.0,
-    double opacity = 0.2,
+    double opacity = 0.15,
   }) {
     return BoxDecoration(
       color: darkSurface.withOpacity(opacity),
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: borderColor ?? textSecondary.withOpacity(0.15),
+        color: customBorderColor ?? borderColor,
         width: 1.0,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 16,
+          color: Colors.black.withOpacity(0.3),
+          blurRadius: 20,
           offset: const Offset(0, 4),
         )
       ]
@@ -66,13 +78,14 @@ class AdminTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: primaryColor,
+      primaryColor: primaryYellow,
       scaffoldBackgroundColor: darkBackground,
       colorScheme: const ColorScheme.dark(
-        primary: primaryColor,
-        secondary: accentTeal,
+        primary: primaryYellow,
+        secondary: secondaryYellow,
         surface: darkSurface,
         error: errorColor,
+        background: darkBackground,
       ),
       textTheme: const TextTheme(
         headlineMedium: TextStyle(
@@ -80,19 +93,27 @@ class AdminTheme {
           fontSize: 28,
           fontWeight: FontWeight.bold,
           letterSpacing: -0.5,
+          fontFamily: 'Poppins',
+          fontFamilyFallback: ['Inter', 'Roboto'],
         ),
         titleLarge: TextStyle(
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w600,
+          fontFamily: 'Poppins',
+          fontFamilyFallback: ['Inter', 'Roboto'],
         ),
         bodyLarge: TextStyle(
           color: textPrimary,
           fontSize: 16,
+          fontFamily: 'Poppins',
+          fontFamilyFallback: ['Inter', 'Roboto'],
         ),
         bodyMedium: TextStyle(
           color: textSecondary,
           fontSize: 14,
+          fontFamily: 'Poppins',
+          fontFamilyFallback: ['Inter', 'Roboto'],
         ),
       ),
       cardTheme: CardThemeData(
@@ -100,25 +121,25 @@ class AdminTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: textSecondary.withOpacity(0.15), width: 1),
+          side: const BorderSide(color: borderColor, width: 1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: darkBackground.withOpacity(0.5),
-        hintStyle: const TextStyle(color: textSecondary, fontSize: 14),
+        fillColor: secondaryBg.withOpacity(0.6),
+        hintStyle: const TextStyle(color: textSecondary, fontSize: 14, fontFamily: 'Poppins', fontFamilyFallback: ['Inter', 'Roboto']),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: textSecondary.withOpacity(0.3)),
+          borderSide: const BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: textSecondary.withOpacity(0.2)),
+          borderSide: const BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: accentTeal, width: 1.5),
+          borderSide: const BorderSide(color: primaryYellow, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),

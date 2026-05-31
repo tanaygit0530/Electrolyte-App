@@ -45,21 +45,25 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: AdminTheme.darkSurface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AdminTheme.borderColor)),
             title: const Row(
               children: [
-                Icon(Icons.check_circle, color: AdminTheme.accentEmerald, size: 28),
+                Icon(Icons.check_circle_rounded, color: AdminTheme.accentEmerald, size: 28),
                 SizedBox(width: 12),
-                Text('Stock Sync Complete'),
+                Text('Stock Sync Complete', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
               ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Daily Stock Sheet "${upload.fileName}" has been processed successfully!'),
+                Text(
+                  'Daily Stock Sheet "${upload.fileName}" has been processed successfully!',
+                  style: const TextStyle(fontFamily: 'Poppins'),
+                ),
                 const SizedBox(height: 16),
-                Text('• Successfully updated rows: ${upload.uploadSummary?['updatedRows'] ?? 0}'),
-                Text('• Failed rows skipped: ${upload.uploadSummary?['failedRows'] ?? 0}'),
+                Text('• Successfully updated rows: ${upload.uploadSummary?['updatedRows'] ?? 0}', style: const TextStyle(fontFamily: 'Poppins')),
+                Text('• Failed rows skipped: ${upload.uploadSummary?['failedRows'] ?? 0}', style: const TextStyle(fontFamily: 'Poppins')),
               ],
             ),
             actions: [
@@ -68,7 +72,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                   Navigator.of(context).pop();
                   upload.resetState();
                 },
-                child: const Text('Back to Dashboard', style: TextStyle(color: AdminTheme.accentTeal)),
+                child: const Text('Back to Dashboard', style: TextStyle(color: AdminTheme.primaryYellow, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
               )
             ],
           ),
@@ -92,8 +96,8 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
     
     if (mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Failed rows report CSV exported successfully!'),
+        const SnackBar(
+          content: Text('Failed rows report CSV exported successfully!'),
           backgroundColor: AdminTheme.accentEmerald,
           behavior: SnackBarBehavior.floating,
           width: 320,
@@ -117,52 +121,10 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(40.0),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Daily Stock Import module',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AdminTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Match parts using codes to update stock levels. Price catalogs will remain completely unchanged.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AdminTheme.textSecondary.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-                if (upload.fileName != null)
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AdminTheme.darkSurface,
-                      foregroundColor: AdminTheme.errorColor,
-                      side: BorderSide(color: AdminTheme.errorColor.withOpacity(0.3)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () => upload.resetState(),
-                    icon: const Icon(Icons.clear, size: 18),
-                    label: const Text('Reset Module', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
             // Drop zone or Main upload trigger
             if (upload.fileName == null)
               Expanded(
@@ -174,13 +136,19 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                       width: double.infinity,
                       constraints: const BoxConstraints(maxHeight: 380),
                       decoration: BoxDecoration(
-                        color: AdminTheme.darkSurface.withOpacity(0.3),
+                        color: AdminTheme.darkSurface.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AdminTheme.accentTeal.withOpacity(0.3),
+                          color: AdminTheme.primaryYellow.withOpacity(0.4),
                           width: 2,
-                          style: BorderStyle.solid, // Flat clean border matching slate look
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -188,13 +156,14 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                           Container(
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              color: AdminTheme.accentTeal.withOpacity(0.1),
+                              color: AdminTheme.primaryYellow.withOpacity(0.1),
                               shape: BoxShape.circle,
+                              border: Border.all(color: AdminTheme.primaryYellow.withOpacity(0.2)),
                             ),
                             child: const Icon(
                               Icons.upload_file_rounded,
                               size: 64,
-                              color: AdminTheme.accentTeal,
+                              color: AdminTheme.primaryYellow,
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -203,16 +172,18 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: AdminTheme.textPrimary,
+                              color: Colors.white,
+                              fontFamily: 'Poppins',
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Click to pick a spreadsheet from your system\nSupports .xlsx and .xls sheets',
                             style: TextStyle(
                               fontSize: 13,
-                              color: AdminTheme.textSecondary,
+                              color: AdminTheme.textSecondary.withOpacity(0.8),
                               height: 1.4,
+                              fontFamily: 'Poppins',
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -230,11 +201,11 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: AdminTheme.accentTeal),
+                        CircularProgressIndicator(color: AdminTheme.primaryYellow),
                         SizedBox(height: 20),
                         Text(
                           'Parsing Excel Sheet rows and running auditing validations...',
-                          style: TextStyle(color: AdminTheme.textSecondary),
+                          style: TextStyle(color: AdminTheme.textSecondary, fontFamily: 'Poppins'),
                         ),
                       ],
                     ),
@@ -250,12 +221,17 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                         const SizedBox(height: 16),
                         Text(
                           upload.errorMessage!,
-                          style: const TextStyle(color: AdminTheme.textPrimary, fontSize: 16),
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontFamily: 'Poppins'),
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AdminTheme.primaryYellow,
+                            foregroundColor: AdminTheme.darkBackground,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                           onPressed: () => upload.resetState(),
-                          child: const Text('Try Again'),
+                          child: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                         ),
                       ],
                     ),
@@ -271,7 +247,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                       Expanded(
                         flex: 7,
                         child: Container(
-                          decoration: AdminTheme.glassBox(opacity: 0.1),
+                          decoration: AdminTheme.glassBox(opacity: 0.15),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -290,7 +266,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                         },
                                         decoration: const InputDecoration(
                                           hintText: 'Search by Product Code...',
-                                          prefixIcon: Icon(Icons.search, size: 18),
+                                          prefixIcon: Icon(Icons.search_rounded, size: 18, color: AdminTheme.textSecondary),
                                           contentPadding: EdgeInsets.symmetric(vertical: 10),
                                         ),
                                       ),
@@ -321,19 +297,19 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                 ),
                               ),
                               
-                              const Divider(height: 1),
+                              const Divider(height: 1, color: AdminTheme.borderColor),
 
                               // Table Headings
                               Container(
-                                color: AdminTheme.darkSurface.withOpacity(0.5),
+                                color: AdminTheme.darkSurface,
                                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                 child: const Row(
                                   children: [
-                                    SizedBox(width: 50, child: Text('Row', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-                                    SizedBox(width: 120, child: Text('Part Code', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-                                    SizedBox(width: 120, child: Text('Raw Stock', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-                                    SizedBox(width: 120, child: Text('Parsed Qty', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
-                                    Expanded(child: Text('Auditing Status', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary))),
+                                    SizedBox(width: 60, child: Text('Row', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins', fontSize: 13))),
+                                    SizedBox(width: 140, child: Text('Part Code', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins', fontSize: 13))),
+                                    SizedBox(width: 120, child: Text('Raw Stock', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins', fontSize: 13))),
+                                    SizedBox(width: 120, child: Text('Parsed Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins', fontSize: 13))),
+                                    Expanded(child: Text('Auditing Status', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins', fontSize: 13))),
                                   ],
                                 ),
                               ),
@@ -344,42 +320,42 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                     ? const Center(
                                         child: Text(
                                           'No items match your active search/filter criteria.',
-                                          style: TextStyle(color: AdminTheme.textSecondary),
+                                          style: TextStyle(color: AdminTheme.textSecondary, fontFamily: 'Poppins'),
                                         ),
                                       )
                                     : ListView.separated(
                                         itemCount: filteredRows.length,
-                                        separatorBuilder: (_, _) => const Divider(height: 1, color: Colors.transparent),
+                                        separatorBuilder: (_, _) => const Divider(height: 1, color: AdminTheme.borderColor),
                                         itemBuilder: (context, idx) {
                                           final row = filteredRows[idx];
                                           return Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                                             color: row.isValid 
-                                                ? Colors.transparent 
-                                                : AdminTheme.errorColor.withOpacity(0.04),
+                                                ? (idx % 2 == 0 ? AdminTheme.darkSurface.withOpacity(0.3) : Colors.transparent)
+                                                : AdminTheme.errorColor.withOpacity(0.06),
                                             child: Row(
                                               children: [
-                                                SizedBox(width: 50, child: Text(row.rowNumber.toString(), style: const TextStyle(color: AdminTheme.textSecondary))),
-                                                SizedBox(width: 120, child: Text(row.productCode, style: const TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textPrimary))),
-                                                SizedBox(width: 120, child: Text(row.originalValue.toString(), style: const TextStyle(color: AdminTheme.textSecondary))),
-                                                SizedBox(width: 120, child: Text(row.parsedValueDisplay, style: TextStyle(fontWeight: FontWeight.bold, color: row.isValid ? AdminTheme.accentTeal : AdminTheme.errorColor))),
+                                                SizedBox(width: 60, child: Text(row.rowNumber.toString(), style: const TextStyle(color: AdminTheme.textSecondary, fontFamily: 'Poppins', fontSize: 13))),
+                                                SizedBox(width: 140, child: Text(row.productCode, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins', fontSize: 13))),
+                                                SizedBox(width: 120, child: Text(row.originalValue.toString(), style: const TextStyle(color: AdminTheme.textSecondary, fontFamily: 'Poppins', fontSize: 13))),
+                                                SizedBox(width: 120, child: Text(row.parsedValueDisplay, style: TextStyle(fontWeight: FontWeight.bold, color: row.isValid ? AdminTheme.primaryYellow : AdminTheme.errorColor, fontFamily: 'Poppins', fontSize: 13))),
                                                 Expanded(
                                                   child: row.isValid
                                                       ? const Row(
                                                           children: [
-                                                            Icon(Icons.check_circle_outline, color: AdminTheme.accentEmerald, size: 16),
+                                                            Icon(Icons.check_circle_outline_rounded, color: AdminTheme.accentEmerald, size: 16),
                                                             SizedBox(width: 6),
-                                                            Text('Valid ready to sync', style: TextStyle(color: AdminTheme.accentEmerald, fontSize: 13)),
+                                                            Text('Valid ready to sync', style: TextStyle(color: AdminTheme.accentEmerald, fontSize: 13, fontFamily: 'Poppins')),
                                                           ],
                                                         )
                                                       : Row(
                                                           children: [
-                                                            const Icon(Icons.error_outline, color: AdminTheme.errorColor, size: 16),
+                                                            const Icon(Icons.error_outline_rounded, color: AdminTheme.errorColor, size: 16),
                                                             SizedBox(width: 6),
                                                             Expanded(
                                                               child: Text(
                                                                 row.errorMessage ?? 'Invalid data',
-                                                                style: const TextStyle(color: AdminTheme.errorColor, fontSize: 13),
+                                                                style: const TextStyle(color: AdminTheme.errorColor, fontSize: 13, fontFamily: 'Poppins'),
                                                                 overflow: TextOverflow.ellipsis,
                                                               ),
                                                             ),
@@ -408,11 +384,11 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                             // Summary stats card
                             Container(
                               padding: const EdgeInsets.all(24),
-                              decoration: AdminTheme.glassBox(opacity: 0.15),
+                              decoration: AdminTheme.glassBox(opacity: 0.2),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Upload Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AdminTheme.textPrimary)),
+                                  const Text('Upload Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins')),
                                   const SizedBox(height: 20),
                                   _SummaryRow(label: 'Total Sheet Rows', value: upload.previewRows.length.toString()),
                                   const SizedBox(height: 12),
@@ -430,8 +406,8 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                               Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: AdminTheme.glassBox(
-                                  borderColor: AdminTheme.errorColor.withOpacity(0.2),
-                                  opacity: 0.08,
+                                  customBorderColor: AdminTheme.errorColor.withOpacity(0.25),
+                                  opacity: 0.1,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,29 +416,27 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                       children: [
                                         Icon(Icons.warning_amber_rounded, color: AdminTheme.errorColor, size: 20),
                                         SizedBox(width: 8),
-                                        Text('Auditing Error Log', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.errorColor)),
+                                        Text('Auditing Error Log', style: TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.errorColor, fontFamily: 'Poppins')),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    Text(
-                                      '${upload.failedRowsReport.length} rows contain negative stock values, blank codes, formats, or duplicate product entries. Fix these in Excel before sync, or download an error report.',
-                                      style: const TextStyle(fontSize: 12, color: AdminTheme.textSecondary, height: 1.4),
+                                    const Text(
+                                      'Rows contain negative values, blank codes, formats, or duplicate product entries. Fix these in Excel before sync, or download an error report.',
+                                      style: TextStyle(fontSize: 12, color: AdminTheme.textSecondary, height: 1.4, fontFamily: 'Poppins'),
                                     ),
                                     const SizedBox(height: 20),
                                     SizedBox(
                                       width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AdminTheme.errorColor.withOpacity(0.12),
+                                      child: OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
                                           foregroundColor: AdminTheme.errorColor,
-                                          elevation: 0,
-                                          side: const BorderSide(color: AdminTheme.errorColor),
+                                          side: const BorderSide(color: AdminTheme.errorColor, width: 1.2),
                                           padding: const EdgeInsets.symmetric(vertical: 16),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
                                         onPressed: _handleExportCsv,
                                         icon: const Icon(Icons.download_rounded, size: 16),
-                                        label: const Text('Export Failures CSV', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        label: const Text('Export Failures CSV', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                                       ),
                                     ),
                                   ],
@@ -475,7 +449,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                             if (upload.isUploading) ...[
                               Text(
                                 'Syncing: ${(upload.uploadProgress * 100).toStringAsFixed(0)}% uploaded...',
-                                style: const TextStyle(fontSize: 13, color: AdminTheme.accentTeal, fontWeight: FontWeight.bold),
+                                style: const TextStyle(fontSize: 13, color: AdminTheme.primaryYellow, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 10),
@@ -484,41 +458,31 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                 child: LinearProgressIndicator(
                                   value: upload.uploadProgress,
                                   backgroundColor: AdminTheme.darkSurface,
-                                  color: AdminTheme.accentTeal,
+                                  color: AdminTheme.primaryYellow,
                                   minHeight: 8,
                                 ),
                               ),
                             ] else
                               SizedBox(
-                                height: 56,
+                                height: 52,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    padding: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    backgroundColor: AdminTheme.primaryYellow,
+                                    foregroundColor: AdminTheme.darkBackground,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Standard 12px rounded
                                   ),
                                   onPressed: upload.validRowsPayload.isEmpty ? null : _handleSubmit,
-                                  child: Ink(
-                                    decoration: BoxDecoration(
-                                      gradient: upload.validRowsPayload.isEmpty ? null : AdminTheme.tealGradient,
-                                      color: upload.validRowsPayload.isEmpty ? Colors.grey.withOpacity(0.2) : null,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      child: const Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.sync, color: Colors.white, size: 20),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Commit Stock Sync',
-                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.sync_rounded, size: 18),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Commit Stock Sync',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins'),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -547,21 +511,21 @@ class _FilterButton extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
-    this.activeColor = AdminTheme.accentTeal,
+    this.activeColor = AdminTheme.primaryYellow,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? activeColor : AdminTheme.textSecondary.withOpacity(0.15),
+            color: isSelected ? activeColor : AdminTheme.borderColor,
             width: 1,
           ),
         ),
@@ -571,6 +535,7 @@ class _FilterButton extends StatelessWidget {
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected ? activeColor : AdminTheme.textSecondary,
+            fontFamily: 'Poppins',
           ),
         ),
       ),
@@ -586,7 +551,7 @@ class _SummaryRow extends StatelessWidget {
   const _SummaryRow({
     required this.label,
     required this.value,
-    this.color = AdminTheme.textPrimary,
+    this.color = Colors.white,
   });
 
   @override
@@ -594,8 +559,8 @@ class _SummaryRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AdminTheme.textSecondary)),
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 13, color: AdminTheme.textSecondary, fontFamily: 'Poppins')),
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color, fontFamily: 'Poppins')),
       ],
     );
   }

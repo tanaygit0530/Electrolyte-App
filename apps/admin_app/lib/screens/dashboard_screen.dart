@@ -40,168 +40,115 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.all(40.0),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row (Wrap-enabled for small widths)
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 20,
-                runSpacing: 20,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'System Telemetry Dashboard',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AdminTheme.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Real-time overview of your Electrolyte database metrics and active inventory status',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AdminTheme.textSecondary.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  // Refresh Button
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AdminTheme.darkSurface,
-                      foregroundColor: AdminTheme.accentTeal,
-                      side: BorderSide(color: AdminTheme.accentTeal.withOpacity(0.3)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () {
-                      dashboard.refreshDashboard();
-                    },
-                    icon: dashboard.isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AdminTheme.accentTeal,
-                            ),
-                          )
-                        : const Icon(Icons.refresh, size: 18),
-                    label: const Text(
-                      'Refresh Panel',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
+              // Welcome / Description bar
+              Text(
+                'Real-time overview of your Electrolyte database metrics and active inventory status',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AdminTheme.textSecondary.withOpacity(0.9),
+                  fontFamily: 'Poppins',
+                ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
-              // Telemetry Cards Grid (Beautiful wrapping behavior)
+              // Telemetry Cards Grid (Sleek wrapped style)
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 children: [
                   SizedBox(
-                    width: 250,
+                    width: 260,
                     child: _StatCard(
                       title: 'Total Distinct Products',
                       value: dashboard.totalProducts.toString(),
-                      icon: Icons.category,
-                      gradient: AdminTheme.blueGradient,
+                      icon: Icons.category_rounded,
+                      accentColor: AdminTheme.primaryYellow,
                     ),
                   ),
                   SizedBox(
-                    width: 250,
+                    width: 260,
                     child: _StatCard(
                       title: 'Total Stock Quantity',
                       value: dashboard.totalStock.toString(),
-                      icon: Icons.inventory,
-                      gradient: AdminTheme.tealGradient,
+                      icon: Icons.inventory_2_rounded,
+                      accentColor: AdminTheme.secondaryYellow,
                     ),
                   ),
                   SizedBox(
-                    width: 250,
+                    width: 260,
                     child: _StatCard(
                       title: 'Last Stock Upload',
                       value: _formatDate(dashboard.lastStockUpload),
-                      icon: Icons.cloud_done,
-                      gradient: AdminTheme.emeraldGradient,
+                      icon: Icons.cloud_done_rounded,
+                      accentColor: AdminTheme.successColor,
                       isDate: true,
                     ),
                   ),
                   SizedBox(
-                    width: 250,
+                    width: 260,
                     child: _StatCard(
                       title: 'Last Price Upload',
                       value: _formatDate(dashboard.lastPriceUpload),
-                      icon: Icons.payments,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
-                      ),
+                      icon: Icons.payments_rounded,
+                      accentColor: const Color(0xFF8B5CF6),
                       isDate: true,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
 
               // Quick Control Center / Actions Heading
               const Text(
                 'Database Control Actions',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AdminTheme.textPrimary,
+                  color: Colors.white,
+                  fontFamily: 'Poppins',
                 ),
               ),
               const SizedBox(height: 20),
               
-              // Action Cards Grid (Responsive Wrapping layout)
+              // Action Cards Grid
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 children: [
                   SizedBox(
-                    width: 340,
+                    width: 350,
                     child: _ActionCard(
                       title: 'Daily Stock Import',
                       description: 'Everyday quick upload to sync stock levels only. Price indices will remain completely unaffected.',
                       icon: Icons.upload_file_rounded,
                       buttonText: 'Open Stock Module',
-                      color: AdminTheme.accentTeal,
+                      color: AdminTheme.primaryYellow,
                       onPressed: () => widget.onNavigate(1),
                     ),
                   ),
                   SizedBox(
-                    width: 340,
+                    width: 350,
                     child: _ActionCard(
                       title: 'Price Catalogue Update',
                       description: 'Upload revised lists when parts pricing changes (typically every 3-6 months) to match customer price indices.',
                       icon: Icons.price_change_rounded,
                       buttonText: 'Open Pricing Module',
-                      color: AdminTheme.accentBlue,
+                      color: AdminTheme.primaryYellow,
                       onPressed: () => widget.onNavigate(2),
                     ),
                   ),
                   SizedBox(
-                    width: 340,
+                    width: 350,
                     child: _ActionCard(
                       title: 'Audit Logs & Histories',
                       description: 'Review transaction logs, evict cache files, download error reports, and search historical database updates.',
                       icon: Icons.document_scanner_rounded,
                       buttonText: 'Open History Module',
-                      color: const Color(0xFF8B5CF6),
+                      color: AdminTheme.primaryYellow,
                       onPressed: () => widget.onNavigate(3),
                     ),
                   ),
@@ -219,84 +166,113 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  final Gradient gradient;
+  final Color accentColor;
   final bool isDate;
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
-    required this.gradient,
+    required this.accentColor,
     this.isDate = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 140,
-      decoration: AdminTheme.glassBox(opacity: 0.15),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            bottom: -20,
-            child: Icon(
-              icon,
-              size: 100,
-              color: AdminTheme.textSecondary.withOpacity(0.04),
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AdminTheme.textSecondary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        gradient: gradient,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(icon, size: 16, color: Colors.white),
-                    ),
-                  ],
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: isDate ? 14 : 32,
-                    fontWeight: FontWeight.bold,
-                    color: AdminTheme.textPrimary,
-                    letterSpacing: isDate ? 0 : -1,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
+      height: 144,
+      decoration: BoxDecoration(
+        color: AdminTheme.darkSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AdminTheme.borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          children: [
+            // Left yellow glowing bar
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 5,
+              child: Container(
+                color: accentColor,
+              ),
+            ),
+            
+            // Decorative background icon
+            Positioned(
+              right: -16,
+              bottom: -16,
+              child: Icon(
+                icon,
+                size: 96,
+                color: accentColor.withOpacity(0.03),
+              ),
+            ),
+            
+            Padding(
+              padding: const EdgeInsets.only(left: 24, top: 22, right: 22, bottom: 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AdminTheme.textSecondary,
+                            fontFamily: 'Poppins',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: accentColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: accentColor.withOpacity(0.2), width: 1),
+                        ),
+                        child: Icon(icon, size: 16, color: accentColor),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: isDate ? 13 : 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontFamily: 'Poppins',
+                      letterSpacing: isDate ? 0 : -0.8,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ActionCard extends StatelessWidget {
+class _ActionCard extends StatefulWidget {
   final String title;
   final String description;
   final IconData icon;
@@ -314,67 +290,100 @@ class _ActionCard extends StatelessWidget {
   });
 
   @override
+  State<_ActionCard> createState() => _ActionCardState();
+}
+
+class _ActionCardState extends State<_ActionCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 260, // Increased height to ensure zero vertical overflow
-      padding: const EdgeInsets.all(28.0),
-      decoration: AdminTheme.glassBox(opacity: 0.15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, size: 36, color: color),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AdminTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AdminTheme.textSecondary,
-                  height: 1.4,
-                ),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        height: 270,
+        padding: const EdgeInsets.all(28.0),
+        decoration: BoxDecoration(
+          color: AdminTheme.darkSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isHovered ? AdminTheme.primaryYellow.withOpacity(0.6) : AdminTheme.borderColor,
+            width: 1.2,
           ),
-          
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color.withOpacity(0.12),
-              foregroundColor: color,
-              elevation: 0,
-              side: BorderSide(color: color.withOpacity(0.3)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: onPressed,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered 
+                  ? AdminTheme.primaryYellow.withOpacity(0.08) 
+                  : Colors.black.withOpacity(0.25),
+              blurRadius: _isHovered ? 20 : 16,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Icon(widget.icon, size: 36, color: AdminTheme.primaryYellow),
+                const SizedBox(height: 14),
                 Text(
-                  buttonText,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                  ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_rounded, size: 14),
+                const SizedBox(height: 8),
+                Text(
+                  widget.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AdminTheme.textSecondary,
+                    height: 1.4,
+                    fontFamily: 'Poppins',
+                  ),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
-          ),
-        ],
+            
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AdminTheme.primaryYellow,
+                  foregroundColor: AdminTheme.darkBackground,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12), // 12px rounded buttons matching spec
+                  ),
+                ),
+                onPressed: widget.onPressed,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.buttonText,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Poppins'),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, size: 16),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

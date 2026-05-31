@@ -18,67 +18,83 @@ class AdminSidebar extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context);
 
     return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: AdminTheme.darkSurface,
+      width: 280,
+      decoration: const BoxDecoration(
+        color: AdminTheme.sidebarBg,
         border: Border(
           right: BorderSide(
-            color: AdminTheme.textSecondary.withOpacity(0.15),
+            color: AdminTheme.borderColor,
             width: 1,
           ),
         ),
       ),
       child: Column(
         children: [
-          // Header / Branding
+          // Premium Branding / Header
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
             alignment: Alignment.centerLeft,
             child: Row(
               children: [
+                // Bolt Logo with glow
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    gradient: AdminTheme.tealGradient,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AdminTheme.darkBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AdminTheme.primaryYellow.withOpacity(0.5), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AdminTheme.primaryYellow.withOpacity(0.2),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      )
+                    ],
                   ),
                   child: const Icon(
                     Icons.bolt,
-                    color: Colors.white,
-                    size: 24,
+                    color: AdminTheme.primaryYellow,
+                    size: 26,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Electrolyte',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AdminTheme.textPrimary,
-                        letterSpacing: 0.5,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Electrolyte',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Control Panel',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AdminTheme.accentTeal.withOpacity(0.8),
-                        fontWeight: FontWeight.w600,
+                      Text(
+                        'Inventory Management',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AdminTheme.textSecondary.withOpacity(0.8),
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Poppins',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           
-          Divider(color: AdminTheme.textSecondary.withOpacity(0.1)),
-          const SizedBox(height: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Divider(color: AdminTheme.borderColor, height: 1),
+          ),
+          const SizedBox(height: 24),
 
-          // Menu Items
+          // Menu Items List
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -90,7 +106,7 @@ class AdminSidebar extends StatelessWidget {
                   isSelected: selectedIndex == 0,
                   onTap: () => onDestinationSelected(0),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 _SidebarItem(
                   icon: Icons.inventory_2_outlined,
                   activeIcon: Icons.inventory_2,
@@ -98,7 +114,7 @@ class AdminSidebar extends StatelessWidget {
                   isSelected: selectedIndex == 1,
                   onTap: () => onDestinationSelected(1),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 _SidebarItem(
                   icon: Icons.payments_outlined,
                   activeIcon: Icons.payments,
@@ -106,7 +122,7 @@ class AdminSidebar extends StatelessWidget {
                   isSelected: selectedIndex == 2,
                   onTap: () => onDestinationSelected(2),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 _SidebarItem(
                   icon: Icons.history_outlined,
                   activeIcon: Icons.history,
@@ -118,14 +134,14 @@ class AdminSidebar extends StatelessWidget {
             ),
           ),
 
-          // Admin profile & Logout footer
+          // Bottom Account profile footer
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AdminTheme.darkBackground.withOpacity(0.4),
-              border: Border(
+              color: AdminTheme.darkBackground.withOpacity(0.3),
+              border: const Border(
                 top: BorderSide(
-                  color: AdminTheme.textSecondary.withOpacity(0.1),
+                  color: AdminTheme.borderColor,
                   width: 1,
                 ),
               ),
@@ -134,12 +150,16 @@ class AdminSidebar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: AdminTheme.accentTeal.withOpacity(0.2),
-                      radius: 18,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AdminTheme.darkSurface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AdminTheme.primaryYellow.withOpacity(0.3)),
+                      ),
                       child: const Icon(
                         Icons.admin_panel_settings,
-                        color: AdminTheme.accentTeal,
+                        color: AdminTheme.primaryYellow,
                         size: 20,
                       ),
                     ),
@@ -153,7 +173,8 @@ class AdminSidebar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: AdminTheme.textPrimary,
+                              color: Colors.white,
+                              fontFamily: 'Poppins',
                             ),
                           ),
                           Text(
@@ -161,6 +182,7 @@ class AdminSidebar extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 11,
                               color: AdminTheme.textSecondary,
+                              fontFamily: 'Poppins',
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -169,18 +191,16 @@ class AdminSidebar extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
                       foregroundColor: AdminTheme.errorColor,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: AdminTheme.errorColor.withOpacity(0.4)),
+                      side: const BorderSide(color: AdminTheme.errorColor, width: 1.2),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     onPressed: () {
@@ -189,7 +209,7 @@ class AdminSidebar extends StatelessWidget {
                     icon: const Icon(Icons.logout, size: 16),
                     label: const Text(
                       'Logout Session',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                     ),
                   ),
                 ),
@@ -219,33 +239,67 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          gradient: isSelected ? AdminTheme.tealGradient : null,
-          color: isSelected ? null : Colors.transparent,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              color: isSelected ? Colors.white : AdminTheme.textSecondary,
-              size: 20,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          hoverColor: AdminTheme.primaryYellow.withOpacity(0.06),
+          splashColor: AdminTheme.primaryYellow.withOpacity(0.12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: isSelected ? AdminTheme.primaryYellow : Colors.transparent,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AdminTheme.primaryYellow.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  : null,
             ),
-            const SizedBox(width: 14),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : AdminTheme.textSecondary,
-              ),
+            child: Row(
+              children: [
+                // Yellow left indicator strip (only on selected item)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 4,
+                  height: isSelected ? 20 : 0,
+                  decoration: BoxDecoration(
+                    color: isSelected ? AdminTheme.darkBackground : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(width: isSelected ? 12 : 0),
+                Icon(
+                  isSelected ? activeIcon : icon,
+                  color: isSelected ? AdminTheme.darkBackground : AdminTheme.textSecondary,
+                  size: 20,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? AdminTheme.darkBackground : AdminTheme.textSecondary,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
