@@ -23,11 +23,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'No uploads recorded';
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    final localDate = date.toLocal();
+    final day = localDate.day.toString().padLeft(2, '0');
+    final month = localDate.month.toString().padLeft(2, '0');
+    final year = localDate.year;
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
     return '$day/$month/$year $hour:$minute';
   }
 
@@ -55,13 +56,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Telemetry Cards Grid (Sleek wrapped style)
-              Wrap(
-                spacing: 24,
-                runSpacing: 24,
+              // Telemetry Cards Grid (Premium responsive row style)
+              Row(
                 children: [
-                  SizedBox(
-                    width: 260,
+                  Expanded(
                     child: _StatCard(
                       title: 'Total Distinct Products',
                       value: dashboard.totalProducts.toString(),
@@ -69,8 +67,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       accentColor: AdminTheme.primaryYellow,
                     ),
                   ),
-                  SizedBox(
-                    width: 260,
+                  const SizedBox(width: 24),
+                  Expanded(
                     child: _StatCard(
                       title: 'Total Stock Quantity',
                       value: dashboard.totalStock.toString(),
@@ -78,8 +76,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       accentColor: AdminTheme.secondaryYellow,
                     ),
                   ),
-                  SizedBox(
-                    width: 260,
+                  const SizedBox(width: 24),
+                  Expanded(
                     child: _StatCard(
                       title: 'Last Stock Upload',
                       value: _formatDate(dashboard.lastStockUpload),
@@ -88,8 +86,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       isDate: true,
                     ),
                   ),
-                  SizedBox(
-                    width: 260,
+                  const SizedBox(width: 24),
+                  Expanded(
                     child: _StatCard(
                       title: 'Last Price Upload',
                       value: _formatDate(dashboard.lastPriceUpload),

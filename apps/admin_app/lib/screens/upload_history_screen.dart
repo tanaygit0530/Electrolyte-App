@@ -31,13 +31,14 @@ class _UploadHistoryScreenState extends State<UploadHistoryScreen> with SingleTi
   }
 
   String _formatDate(DateTime date) {
-    // Format: DD/MM/YYYY HH:MM:SS
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    final second = date.second.toString().padLeft(2, '0');
+    // Convert UTC to local time zone (IST)
+    final localDate = date.toLocal();
+    final day = localDate.day.toString().padLeft(2, '0');
+    final month = localDate.month.toString().padLeft(2, '0');
+    final year = localDate.year;
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
+    final second = localDate.second.toString().padLeft(2, '0');
     return '$day/$month/$year $hour:$minute:$second';
   }
 

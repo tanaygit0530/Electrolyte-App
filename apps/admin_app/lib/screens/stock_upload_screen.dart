@@ -168,7 +168,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                           ),
                           const SizedBox(height: 24),
                           const Text(
-                            'Daily Stock Excel Sheet Selection',
+                            'Daily Stock Excel / CSV Selection',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -178,7 +178,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Click to pick a spreadsheet from your system\nSupports .xlsx and .xls sheets',
+                            'Click to pick a spreadsheet from your system\nSupports .xlsx, .xls and .csv files',
                             style: TextStyle(
                               fontSize: 13,
                               color: AdminTheme.textSecondary.withOpacity(0.8),
@@ -204,7 +204,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                         CircularProgressIndicator(color: AdminTheme.primaryYellow),
                         SizedBox(height: 20),
                         Text(
-                          'Parsing Excel Sheet rows and running auditing validations...',
+                          'Parsing sheet rows and running auditing validations...',
                           style: TextStyle(color: AdminTheme.textSecondary, fontFamily: 'Poppins'),
                         ),
                       ],

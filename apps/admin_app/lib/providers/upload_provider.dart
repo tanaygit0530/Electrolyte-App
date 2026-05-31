@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
@@ -33,6 +34,11 @@ class PreviewRow {
     required this.isValid,
     this.errorMessage,
   });
+}
+
+class CellValueHolder {
+  final dynamic value;
+  CellValueHolder(this.value);
 }
 
 class UploadProvider extends ChangeNotifier {
@@ -79,14 +85,14 @@ class UploadProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Selects an Excel file from the local desktop environment
+  /// Selects an Excel or CSV file from the local desktop environment
   Future<bool> pickExcelFile() async {
     resetState();
     
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['xlsx', 'xls'],
+        allowedExtensions: ['xlsx', 'xls', 'csv'],
       );
 
       if (result != null && result.files.single.path != null) {
@@ -102,9 +108,38 @@ class UploadProvider extends ChangeNotifier {
     return false;
   }
 
+  List<List<String>> _parseCsvString(String csvContent) {
+    final List<List<String>> result = [];
+    final RegExp lineRegex = RegExp(r'\r?\n');
+    final List<String> lines = csvContent.split(lineRegex);
+    
+    for (String line in lines) {
+      if (line.trim().isEmpty) continue;
+      
+      final List<String> row = [];
+      final StringBuffer cell = StringBuffer();
+      bool inQuotes = false;
+      
+      for (int i = 0; i < line.length; i++) {
+        final char = line[i];
+        if (char == '"') {
+          inQuotes = !inQuotes;
+        } else if (char == ',' && !inQuotes) {
+          row.add(cell.toString().trim());
+          cell.clear();
+        } else {
+          cell.write(char);
+        }
+      }
+      row.add(cell.toString().trim());
+      result.add(row);
+    }
+    return result;
+  }
+
   /// Parses the DAILY STOCK SHEET:
   /// Extracts Product Code (fallback index 4) + Quantity On Hand (fallback index 6)
-  /// Ignores prices.
+  /// Supports Excel and CSV formats.
   Future<void> parseStockSheet() async {
     if (_filePath == null) return;
     
@@ -117,27 +152,47 @@ class UploadProvider extends ChangeNotifier {
 
     try {
       final file = File(_filePath!);
-      final bytes = file.readAsBytesSync();
-      final excel = Excel.decodeBytes(bytes);
+      final isCsv = _fileName?.toLowerCase().endsWith('.csv') ?? false;
+      final List<List<CellValueHolder>> rowsData = [];
 
-      if (excel.tables.isEmpty) {
-        throw Exception('Selected Excel workbook contains no tables/sheets.');
-      }
+      if (isCsv) {
+        String csvContent;
+        try {
+          csvContent = await file.readAsString(encoding: utf8);
+        } catch (_) {
+          csvContent = await file.readAsString(encoding: latin1);
+        }
+        final parsed = _parseCsvString(csvContent);
+        for (var csvRow in parsed) {
+          rowsData.add(csvRow.map((cell) => CellValueHolder(cell)).toList());
+        }
+      } else {
+        final bytes = file.readAsBytesSync();
+        final excel = Excel.decodeBytes(bytes);
 
-      final sheetName = excel.tables.keys.first;
-      final table = excel.tables[sheetName]!;
+        if (excel.tables.isEmpty) {
+          throw Exception('Selected Excel workbook contains no tables/sheets.');
+        }
 
-      if (table.maxRows <= 1) {
-        throw Exception('The sheet "$sheetName" is empty.');
+        final sheetName = excel.tables.keys.first;
+        final table = excel.tables[sheetName]!;
+
+        if (table.maxRows <= 1) {
+          throw Exception('The sheet "$sheetName" is empty.');
+        }
+
+        for (var r in table.rows) {
+          rowsData.add(r.map((cell) => CellValueHolder(cell?.value)).toList());
+        }
       }
 
       // 1. Detect headers or use fallback indices
       int codeColIndex = 4; // Fallback
       int qtyColIndex = 6;  // Fallback
       
-      final firstRow = table.rows[0];
+      final firstRow = rowsData[0];
       for (int i = 0; i < firstRow.length; i++) {
-        final cellVal = firstRow[i]?.value?.toString().toLowerCase().trim() ?? '';
+        final cellVal = firstRow[i].value?.toString().toLowerCase().trim() ?? '';
         if (cellVal.contains('product code') || cellVal == 'code' || cellVal == 'product_code') {
           codeColIndex = i;
         } else if (cellVal.contains('quantity on hand') || cellVal == 'qty' || cellVal == 'quantity' || cellVal.contains('quantityonhand')) {
@@ -149,16 +204,16 @@ class UploadProvider extends ChangeNotifier {
       final Set<String> processedCodes = {};
 
       // 2. Parse data rows starting from row index 1 (skipping header)
-      for (int r = 1; r < table.maxRows; r++) {
-        final row = table.rows[r];
+      for (int r = 1; r < rowsData.length; r++) {
+        final row = rowsData[r];
         if (row.isEmpty) continue;
 
         // Skip completely empty rows
-        final bool isRowEmpty = row.every((cell) => cell?.value == null || cell!.value.toString().trim().isEmpty);
+        final bool isRowEmpty = row.every((cell) => cell.value == null || cell.value.toString().trim().isEmpty);
         if (isRowEmpty) continue;
 
-        final rawCode = row.length > codeColIndex ? row[codeColIndex]?.value : null;
-        final rawQty = row.length > qtyColIndex ? row[qtyColIndex]?.value : null;
+        final rawCode = row.length > codeColIndex ? row[codeColIndex].value : null;
+        final rawQty = row.length > qtyColIndex ? row[qtyColIndex].value : null;
 
         final codeErr = ExcelValidators.validateProductCode(rawCode);
         final code = rawCode?.toString().trim() ?? '';
@@ -234,7 +289,7 @@ class UploadProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      _errorMessage = 'Excel parsing failed: $e';
+      _errorMessage = 'Sheet parsing failed: $e';
     } finally {
       _isParsing = false;
       notifyListeners();
@@ -244,6 +299,7 @@ class UploadProvider extends ChangeNotifier {
   /// Parses the PRICE UPDATE SHEET:
   /// Extracts Product Code (fallback index 1) + Customer Price (fallback index 3)
   /// Ignores ASP prices, removes currency symbols, converts to double decimal.
+  /// Supports Excel and CSV formats.
   Future<void> parsePriceSheet() async {
     if (_filePath == null) return;
 
@@ -256,27 +312,47 @@ class UploadProvider extends ChangeNotifier {
 
     try {
       final file = File(_filePath!);
-      final bytes = file.readAsBytesSync();
-      final excel = Excel.decodeBytes(bytes);
+      final isCsv = _fileName?.toLowerCase().endsWith('.csv') ?? false;
+      final List<List<CellValueHolder>> rowsData = [];
 
-      if (excel.tables.isEmpty) {
-        throw Exception('Selected Excel workbook contains no tables/sheets.');
-      }
+      if (isCsv) {
+        String csvContent;
+        try {
+          csvContent = await file.readAsString(encoding: utf8);
+        } catch (_) {
+          csvContent = await file.readAsString(encoding: latin1);
+        }
+        final parsed = _parseCsvString(csvContent);
+        for (var csvRow in parsed) {
+          rowsData.add(csvRow.map((cell) => CellValueHolder(cell)).toList());
+        }
+      } else {
+        final bytes = file.readAsBytesSync();
+        final excel = Excel.decodeBytes(bytes);
 
-      final sheetName = excel.tables.keys.first;
-      final table = excel.tables[sheetName]!;
+        if (excel.tables.isEmpty) {
+          throw Exception('Selected Excel workbook contains no tables/sheets.');
+        }
 
-      if (table.maxRows <= 1) {
-        throw Exception('The sheet "$sheetName" is empty.');
+        final sheetName = excel.tables.keys.first;
+        final table = excel.tables[sheetName]!;
+
+        if (table.maxRows <= 1) {
+          throw Exception('The sheet "$sheetName" is empty.');
+        }
+
+        for (var r in table.rows) {
+          rowsData.add(r.map((cell) => CellValueHolder(cell?.value)).toList());
+        }
       }
 
       // 1. Detect headers or use fallback indices
       int codeColIndex = 1;  // Fallback
       int priceColIndex = 3; // Fallback
 
-      final firstRow = table.rows[0];
+      final firstRow = rowsData[0];
       for (int i = 0; i < firstRow.length; i++) {
-        final cellVal = firstRow[i]?.value?.toString().toLowerCase().trim() ?? '';
+        final cellVal = firstRow[i].value?.toString().toLowerCase().trim() ?? '';
         if (cellVal.contains('product code') || cellVal == 'code' || cellVal == 'product_code') {
           codeColIndex = i;
         } else if (cellVal.contains('customer price') || cellVal == 'price' || cellVal == 'customer_price' || cellVal == 'asp price') {
@@ -290,16 +366,16 @@ class UploadProvider extends ChangeNotifier {
       final Set<String> processedCodes = {};
 
       // 2. Parse data rows skipping header row
-      for (int r = 1; r < table.maxRows; r++) {
-        final row = table.rows[r];
+      for (int r = 1; r < rowsData.length; r++) {
+        final row = rowsData[r];
         if (row.isEmpty) continue;
 
         // Skip completely empty rows
-        final bool isRowEmpty = row.every((cell) => cell?.value == null || cell!.value.toString().trim().isEmpty);
+        final bool isRowEmpty = row.every((cell) => cell.value == null || cell.value.toString().trim().isEmpty);
         if (isRowEmpty) continue;
 
-        final rawCode = row.length > codeColIndex ? row[codeColIndex]?.value : null;
-        final rawPrice = row.length > priceColIndex ? row[priceColIndex]?.value : null;
+        final rawCode = row.length > codeColIndex ? row[codeColIndex].value : null;
+        final rawPrice = row.length > priceColIndex ? row[priceColIndex].value : null;
 
         final codeErr = ExcelValidators.validateProductCode(rawCode);
         final code = rawCode?.toString().trim() ?? '';
@@ -374,7 +450,7 @@ class UploadProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      _errorMessage = 'Excel parsing failed: $e';
+      _errorMessage = 'Sheet parsing failed: $e';
     } finally {
       _isParsing = false;
       notifyListeners();
@@ -528,7 +604,7 @@ class UploadProvider extends ChangeNotifier {
       // 2. Select save path on Desktop
       String? savePath = await FilePicker.platform.saveFile(
         dialogTitle: 'Save Failed Rows CSV Log',
-        fileName: '${_fileName?.replaceAll('.xlsx', '').replaceAll('.xls', '')}_failed_report.csv',
+        fileName: '${_fileName?.replaceAll('.xlsx', '').replaceAll('.xls', '').replaceAll('.csv', '')}_failed_report.csv',
         type: FileType.custom,
         allowedExtensions: ['csv'],
       );
