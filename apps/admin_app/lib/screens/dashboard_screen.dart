@@ -61,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Expanded(
                     child: _StatCard(
-                      title: 'Total Distinct Products',
+                      title: 'Total Products',
                       value: dashboard.totalProducts.toString(),
                       icon: Icons.category_rounded,
                       accentColor: AdminTheme.primaryYellow,
@@ -70,7 +70,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(width: 24),
                   Expanded(
                     child: _StatCard(
-                      title: 'Total Stock Quantity',
+                      title: 'Total Stock',
                       value: dashboard.totalStock.toString(),
                       icon: Icons.inventory_2_rounded,
                       accentColor: AdminTheme.secondaryYellow,
