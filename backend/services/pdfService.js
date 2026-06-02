@@ -2,6 +2,38 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
+let browserInstance = null;
+
+// Memory Cache for static assets
+let cachedLogo = '';
+let cachedSymphonyLogo = '';
+let cachedAtombergLogo = '';
+let cachedQr = '';
+let cachedStamp = '';
+let cachedTemplate = '';
+
+const getBrowser = async () => {
+  if (!browserInstance) {
+    browserInstance = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
+    console.log('Puppeteer browser initialized');
+  }
+  return browserInstance;
+};
+
+const closeBrowser = async () => {
+  if (browserInstance) {
+    await browserInstance.close();
+    browserInstance = null;
+    console.log('Puppeteer browser closed');
+  }
+};
+
 const numberToWords = (num) => {
   const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -39,7 +71,8 @@ const getBase64Image = (filePath) => {
       'jpg': 'image/jpeg',
       'jpeg': 'image/jpeg',
       'png': 'image/png',
-      'gif': 'image/gif'
+      'gif': 'image/gif',
+      'webp': 'image/webp'
     };
     const mimeType = mimeMap[extension] || `image/${extension}`;
     return `data:${mimeType};base64,${file.toString('base64')}`;
@@ -50,18 +83,26 @@ const getBase64Image = (filePath) => {
 };
 
 const generatePDF = async (invoiceData) => {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const browser = await getBrowser();
+
+  let page;
 
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
 
-    // Load images
+    // Load images with in-memory caching
     const resourcesPath = path.join(__dirname, '../resources');
-    const logoBase64 = getBase64Image(path.join(resourcesPath, 'company_logo_lighttheme.png'));
     
+    if (!cachedLogo) cachedLogo = getBase64Image(path.join(resourcesPath, 'company_logo_lighttheme.webp'));
+    if (!cachedSymphonyLogo) cachedSymphonyLogo = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.webp'));
+    if (!cachedAtombergLogo) cachedAtombergLogo = getBase64Image(path.join(resourcesPath, 'Atomberg-Logo.webp'));
+    if (!cachedQr) cachedQr = getBase64Image(path.join(resourcesPath, 'qr_code.webp'));
+    if (!cachedStamp) cachedStamp = getBase64Image(path.join(resourcesPath, 'Stamp_with_sign.webp'));
+    
+    const logoBase64 = cachedLogo;
+    const qrBase64 = cachedQr;
+    const stampBase64 = cachedStamp;
+
     let brandLogoBase64 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // transparent spacer
     let brandLogoWidth = 130;
     let brandLogoDisplay = 'block';
@@ -70,16 +111,13 @@ const generatePDF = async (invoiceData) => {
     const isSymphony = brandNameLower.includes('symphony');
 
     if (isSymphony) {
-      brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Symphony-Logo-PNG1.png'));
+      brandLogoBase64 = cachedSymphonyLogo;
       brandLogoWidth = 120;
     } else {
       // Default to Atomberg
-      brandLogoBase64 = getBase64Image(path.join(resourcesPath, 'Atomberg-Logo.png'));
+      brandLogoBase64 = cachedAtombergLogo;
       brandLogoWidth = 130;
     }
-
-    const qrBase64 = getBase64Image(path.join(resourcesPath, 'qr_code.jpeg'));
-    const stampBase64 = getBase64Image(path.join(resourcesPath, 'Stamp_with_sign.PNG'));
 
     // Format date to DD-MMM-YY format (e.g. 10-Feb-24)
     const options = { day: '2-digit', month: 'short', year: '2-digit' };
@@ -276,9 +314,12 @@ const generatePDF = async (invoiceData) => {
       wordsText = `<b>IN WORDS:</b> ${rawWordsText.toUpperCase()}`;
     }
 
-    // Load template
-    const templatePath = path.join(__dirname, '../template.html');
-    let htmlContent = fs.readFileSync(templatePath, 'utf8');
+    // Load template with in-memory caching
+    if (!cachedTemplate) {
+      const templatePath = path.join(__dirname, '../template.html');
+      cachedTemplate = fs.readFileSync(templatePath, 'utf8');
+    }
+    let htmlContent = cachedTemplate;
 
     // Replace placeholders
     const replacements = {
@@ -308,7 +349,14 @@ const generatePDF = async (invoiceData) => {
       htmlContent = htmlContent.split(placeholder).join(value);
     }
 
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    console.time('setContent');
+
+    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+
+    console.timeEnd('setContent');
+
+    console.time('pagePdf');
+
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -321,10 +369,12 @@ const generatePDF = async (invoiceData) => {
       }
     });
 
+    console.timeEnd('pagePdf');
+
     return Buffer.from(pdfBuffer);
   } finally {
-    await browser.close();
+    if (page) await page.close();
   }
 };
 
-module.exports = { generatePDF };
+module.exports = { generatePDF, closeBrowser };

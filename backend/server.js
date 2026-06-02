@@ -44,3 +44,17 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+const { closeBrowser } = require('./services/pdfService');
+
+process.on('SIGINT', async () => {
+  console.log('Server shutting down...');
+  await closeBrowser();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Server terminated');
+  await closeBrowser();
+  process.exit(0);
+});

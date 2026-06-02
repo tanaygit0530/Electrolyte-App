@@ -49,7 +49,7 @@ exports.searchParts = async (req, res) => {
   try {
     const queryStr = `%${q}%`;
     const result = await pool.query(
-      'SELECT * FROM products WHERE product_name ILIKE $1 OR product_code ILIKE $1 LIMIT 5',
+      'SELECT * FROM products WHERE product_name ILIKE $1 OR product_code ILIKE $1 OR description ILIKE $1 LIMIT 5',
       [queryStr]
     );
 

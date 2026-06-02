@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:shared_core/shared_core.dart';
@@ -22,6 +23,7 @@ class _BillingScreenState extends State<BillingScreen> {
   bool _isSearching = false;
   bool _isGenerating = false;
   bool _gstEnabled = false;
+  Timer? _debounce;
   
   final _searchController = TextEditingController();
   final _customerNameController = TextEditingController();
@@ -40,6 +42,7 @@ class _BillingScreenState extends State<BillingScreen> {
     _preparedByController.dispose();
     _caseIdController.dispose();
     _serviceChargeController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -324,22 +327,29 @@ class _BillingScreenState extends State<BillingScreen> {
               : null,
           border: InputBorder.none,
         ),
-        onChanged: (value) async {
-          if (value.length > 2) {
-            setState(() => _isSearching = true);
-            try {
-              final results = await _apiService.searchParts(value);
-              setState(() {
-                _searchResults = results;
-              });
-            } catch (e) {
-              debugPrint("Search error: $e");
-            } finally {
-              setState(() => _isSearching = false);
+        onChanged: (value) {
+          if (_debounce?.isActive ?? false) _debounce!.cancel();
+          _debounce = Timer(const Duration(milliseconds: 400), () async {
+            if (value.length > 2) {
+              setState(() => _isSearching = true);
+              try {
+                final results = await _apiService.searchParts(value);
+                if (mounted) {
+                  setState(() {
+                    _searchResults = results;
+                  });
+                }
+              } catch (e) {
+                debugPrint("Search error: $e");
+              } finally {
+                if (mounted) {
+                  setState(() => _isSearching = false);
+                }
+              }
+            } else {
+              setState(() => _searchResults = []);
             }
-          } else {
-            setState(() => _searchResults = []);
-          }
+          });
         },
       ),
     );
@@ -383,7 +393,17 @@ class _BillingScreenState extends State<BillingScreen> {
       }
 
       final pdfUrl = response['pdfUrl'];
-      if (pdfUrl != null && pdfUrl.toString().isNotEmpty) {
+      final pdfBase64 = response['pdfBase64'];
+      if (pdfBase64 != null && pdfBase64.toString().isNotEmpty) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InvoicePreviewScreen(pdfUrl: pdfUrl ?? '', pdfBase64: pdfBase64),
+            ),
+          );
+        }
+      } else if (pdfUrl != null && pdfUrl.toString().isNotEmpty) {
         if (mounted) {
           Navigator.push(
             context,
