@@ -197,12 +197,8 @@ class _ChatBubble extends StatelessWidget {
             Container(
               margin: const EdgeInsets.only(top: 4, bottom: 8),
               width: MediaQuery.of(context).size.width * 0.85,
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: components!.length,
-                itemBuilder: (context, index) {
-                  final comp = components![index];
+              child: Column(
+                children: components!.map<Widget>((comp) {
                   return Card(
                     color: isDark ? const Color(0xFF2B3A55) : Colors.white,
                     margin: const EdgeInsets.symmetric(vertical: 4),
@@ -268,7 +264,7 @@ class _ChatBubble extends StatelessWidget {
                       ),
                     ),
                   );
-                },
+                }).toList(),
               ),
             ),
         ],

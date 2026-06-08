@@ -1,35 +1,36 @@
 const jwt = require('jsonwebtoken');
 
 const requireTechnicianAuth = (req, res, next) => {
-  // Try to get token from headers
-  const authHeader = req.headers.authorization;
-  
-  // Temporary bypass for E2E local testing if no token provided (remove or secure in production)
-  if (!authHeader) {
-    req.user = { name: 'Test Tech', email: 'tech@example.com', role: 'technician' };
-    return next();
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
-  }
-
   try {
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'fallback_secret'
-    );
-    
-    if (decoded.role !== 'technician') {
-      return res.status(403).json({ error: 'Forbidden: Requires technician role' });
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is missing. Access denied.' });
     }
 
+    const token = authHeader.startsWith('Bearer ') 
+      ? authHeader.slice(7) 
+      : authHeader;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication token is missing. Access denied.' });
+    }
+
+    const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
+    const decoded = jwt.verify(token, secret);
+    
+    if (decoded.role !== 'technician') {
+      return res.status(403).json({ error: 'Forbidden: Requires technician role.' });
+    }
+
+    // Attach user info to request
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    console.error('Technician Auth Error:', error.message);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired. Please login again.' });
+    }
+    return res.status(401).json({ error: 'Invalid token. Authorization failed.' });
   }
 };
 

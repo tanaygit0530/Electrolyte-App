@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/auth_provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -9,6 +10,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final auth = context.watch<AuthProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -23,15 +25,16 @@ class ProfileScreen extends StatelessWidget {
               child: Icon(Icons.person, size: 60, color: Colors.black),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "Tanay Patil",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              auth.name,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const Text(
-              "Technician ID: TECH-2024-001",
-              style: TextStyle(color: Colors.grey),
+            Text(
+              auth.email ?? "technician@example.com",
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 32),
+            _buildProfileItem(Icons.badge, "Technician ID", auth.id != null ? "TECH-00${auth.id}" : "TECH-2024-001"),
             _buildProfileItem(Icons.phone, "Mobile Number", "+91 98765 43210"),
             _buildProfileItem(
               Icons.location_on,
@@ -50,9 +53,12 @@ class ProfileScreen extends StatelessWidget {
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text("Logout", style: TextStyle(color: Colors.red)),
               onTap: () {
-                // Non-functional as per requirement
+                context.read<AuthProvider>().logout();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Logout feature coming soon")),
+                  const SnackBar(
+                    content: Text("Logged out successfully!"),
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               },
             ),

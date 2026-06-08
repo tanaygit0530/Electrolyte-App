@@ -8,6 +8,8 @@ const setup = async () => {
     // 0. Enable extensions
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
     console.log('- pgcrypto extension verified/enabled');
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS "pg_trgm";`);
+    console.log('- pg_trgm extension verified/enabled');
 
     // 1. Create tables
     await pool.query(`
@@ -23,6 +25,11 @@ const setup = async () => {
       );
     `);
     console.log('- products table verified/created');
+
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin (product_name gin_trgm_ops);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_code_trgm ON products USING gin (product_code gin_trgm_ops);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON products USING gin (description gin_trgm_ops);`);
+    console.log('- products trigram GIN indexes verified/created');
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admins (

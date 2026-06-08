@@ -3,7 +3,7 @@ const router = express.Router();
 const invoiceController = require('../controllers/invoiceController');
 const { requireTechnicianAuth } = require('../middleware/auth');
 
-// router.use(requireTechnicianAuth);
+router.use(requireTechnicianAuth);
 
 router.post('/', invoiceController.createInvoice);
 router.get('/', invoiceController.getInvoices);

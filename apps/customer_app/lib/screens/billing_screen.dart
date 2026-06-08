@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_core/shared_core.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../providers/auth_provider.dart';
 import 'invoice_preview_screen.dart';
 
 class BillingScreen extends StatefulWidget {
@@ -29,9 +31,16 @@ class _BillingScreenState extends State<BillingScreen> {
   final _customerNameController = TextEditingController();
   final _customerEmailController = TextEditingController();
   final _serialNumberController = TextEditingController();
-  final _preparedByController = TextEditingController(text: 'DIPAK MOHITE');
+  final _preparedByController = TextEditingController();
   final _caseIdController = TextEditingController();
   final _serviceChargeController = TextEditingController(text: '0');
+
+  @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthProvider>();
+    _preparedByController.text = auth.name;
+  }
 
   @override
   void dispose() {
@@ -183,6 +192,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 Icons.person_outline,
                 "DIPAK MOHITE",
                 controller: _preparedByController,
+                enabled: false,
               ),
               _buildTextField(
                 "Case ID",
@@ -253,6 +263,7 @@ class _BillingScreenState extends State<BillingScreen> {
     String hint, {
     TextInputType? keyboardType,
     TextEditingController? controller,
+    bool enabled = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -263,6 +274,7 @@ class _BillingScreenState extends State<BillingScreen> {
           TextFormField(
             controller: controller,
             keyboardType: keyboardType,
+            enabled: enabled,
             decoration: InputDecoration(
               hintText: hint,
               suffixIcon: Icon(icon, color: const Color(0xFFFFC107)),

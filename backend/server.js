@@ -43,9 +43,13 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  // Warm up Puppeteer browser instance asynchronously
+  getBrowser()
+    .then(() => console.log('Puppeteer browser pre-warmed and ready'))
+    .catch(err => console.error('Failed to pre-warm Puppeteer browser:', err));
 });
 
-const { closeBrowser } = require('./services/pdfService');
+const { closeBrowser, getBrowser } = require('./services/pdfService');
 
 // Global process error handlers to log and prevent automatic exit on unhandled promise rejections or exceptions
 process.on('unhandledRejection', (reason, promise) => {

@@ -433,4 +433,4 @@ const generatePDF = async (invoiceData) => {
   }
 };
 
-module.exports = { generatePDF, closeBrowser };
+module.exports = { generatePDF, closeBrowser, getBrowser };

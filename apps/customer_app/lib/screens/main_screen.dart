@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../providers/order_provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/auth_provider.dart';
 import 'chatbot_screen.dart';
 import 'history_screen.dart';
 import 'billing_screen.dart';
@@ -35,6 +37,38 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final navProvider = context.watch<NavigationProvider>();
+    final auth = context.watch<AuthProvider>();
+
+    if (auth.sessionExpired) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        auth.resetSessionExpiredFlag();
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.lock_clock_outlined, color: Colors.red, size: 28),
+                SizedBox(width: 12),
+                Text('Session Expired'),
+              ],
+            ),
+            content: const Text(
+              'Your security token has expired or is no longer valid. For your protection, you have been logged out automatically. Please log in again to restore access.',
+              style: TextStyle(height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Return to Login', style: TextStyle(color: AppTheme.primaryYellow, fontWeight: FontWeight.bold)),
+              )
+            ],
+          ),
+        );
+      });
+    }
 
     return Scaffold(
       body: IndexedStack(index: navProvider.selectedIndex, children: _screens),
