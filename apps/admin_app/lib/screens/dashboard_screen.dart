@@ -45,16 +45,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Welcome / Description bar
-              Text(
-                'Real-time overview of your Electrolyte database metrics and active inventory status',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AdminTheme.textSecondary.withOpacity(0.9),
-                  fontFamily: 'Poppins',
-                ),
-              ),
-              const SizedBox(height: 32),
+              // // Welcome / Description bar
+              // Text(
+              //   'Real-time overview of your Electrolyte database metrics and active inventory status',
+              //   style: TextStyle(
+              //     fontSize: 14,
+              //     color: AdminTheme.textSecondary.withOpacity(0.9),
+              //     fontFamily: 'Poppins',
+              //   ),
+              // ),
+              // const SizedBox(height: 32),
 
               // Telemetry Cards Grid (Premium responsive row style)
               Row(
@@ -121,7 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 350,
                     child: _ActionCard(
                       title: 'Daily Stock Import',
-                      description: 'Everyday quick upload to sync stock levels only. Price indices will remain completely unaffected.',
+                      // description: 'Everyday quick upload to sync stock levels only. Price indices will remain completely unaffected.',
                       icon: Icons.upload_file_rounded,
                       buttonText: 'Open Stock Module',
                       color: AdminTheme.primaryYellow,
@@ -132,7 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 350,
                     child: _ActionCard(
                       title: 'Price Catalogue Update',
-                      description: 'Upload revised lists when parts pricing changes (typically every 3-6 months) to match customer price indices.',
+                      // description: 'Upload revised lists when parts pricing changes (typically every 3-6 months) to match customer price indices.',
                       icon: Icons.price_change_rounded,
                       buttonText: 'Open Pricing Module',
                       color: AdminTheme.primaryYellow,
@@ -143,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 350,
                     child: _ActionCard(
                       title: 'Audit Logs & Histories',
-                      description: 'Review transaction logs, evict cache files, download error reports, and search historical database updates.',
+                      // description: 'Review transaction logs, evict cache files, download error reports, and search historical database updates.',
                       icon: Icons.document_scanner_rounded,
                       buttonText: 'Open History Module',
                       color: AdminTheme.primaryYellow,
@@ -272,7 +272,7 @@ class _StatCard extends StatelessWidget {
 
 class _ActionCard extends StatefulWidget {
   final String title;
-  final String description;
+  // final String description;
   final IconData icon;
   final String buttonText;
   final Color color;
@@ -280,7 +280,7 @@ class _ActionCard extends StatefulWidget {
 
   const _ActionCard({
     required this.title,
-    required this.description,
+    // required this.description,
     required this.icon,
     required this.buttonText,
     required this.color,
@@ -339,17 +339,17 @@ class _ActionCardState extends State<_ActionCard> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  widget.description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AdminTheme.textSecondary,
-                    height: 1.4,
-                    fontFamily: 'Poppins',
-                  ),
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                // Text(
+                //   widget.description,
+                //   style: const TextStyle(
+                //     fontSize: 12,
+                //     color: AdminTheme.textSecondary,
+                //     height: 1.4,
+                //     fontFamily: 'Poppins',
+                //   ),
+                //   maxLines: 4,
+                //   overflow: TextOverflow.ellipsis,
+                // ),
               ],
             ),
             

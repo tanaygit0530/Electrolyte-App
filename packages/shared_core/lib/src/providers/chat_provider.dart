@@ -33,7 +33,7 @@ class ChatProvider with ChangeNotifier {
     _messages.add(
       ChatMessage(
         text:
-            "Hello! I'm your AI Spare Parts Assistant. How can I help you today?",
+            "Hello! I'm your Spare Parts Assistant. How can I help you today?",
         isUser: false,
       ),
     );

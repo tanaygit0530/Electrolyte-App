@@ -34,9 +34,9 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       case 3:
         return 'Historical Upload Logs';
       case 4:
-        return 'Chatbot AI Assistant';
+        return 'Chatbot';
       case 5:
-        return 'Invoice Generator';
+        return 'Invoice';
       default:
         return 'Admin Control Panel';
     }

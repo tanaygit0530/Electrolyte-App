@@ -10,7 +10,7 @@
     }
 
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Tahoma', 'Geneva', sans-serif;
       margin: 0;
       padding: 0;
       background: #fff;
@@ -21,13 +21,10 @@
 
     .page {
       width: 100%;
-      min-height: 277mm; /* Standard A4 height is 297mm, minus some padding */
       border: 1.5px solid #000;
-      padding: 18px;
       position: relative;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
     }
 
     /* WATERMARK */
@@ -36,94 +33,95 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.10;
-      width: 500px;
+      opacity: 0.05;
+      width: 450px;
       height: auto;
       pointer-events: none;
       z-index: 0;
     }
 
-    .header {
-      position: relative;
-      text-align: center;
-      padding-top: 10px;
-      padding-bottom: 10px;
-      padding-left: 130px;
-      padding-right: 150px;
-      min-height: 100px;
+    .top-content {
+      width: 100%;
+      z-index: 1;
+    }
+
+    .bottom-content {
+      width: 100%;
+      z-index: 1;
+    }
+
+    /* HEADER SECTION */
+    .header-section {
+      width: 100%;
       border-bottom: 1.5px solid #000;
-      margin-bottom: 15px;
-      z-index: 1;
     }
 
-    .logo-left {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 110px;
-      height: auto;
-      object-fit: contain;
+    .header-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #000;
+      padding: 4px 12px;
+      font-size: 10px;
+      font-weight: bold;
     }
 
-    .logo-right {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      height: auto;
-      object-fit: contain;
-    }
-
-    .header h1 {
+    .header-gstin p {
       margin: 0;
-      color: #000;
-      font-size: 26px;
-      font-weight: bold;
-      line-height: 1.2;
     }
 
-    .header p {
-      margin: 3px 0;
-      font-size: 11px;
-      color: #000;
-      line-height: 1.4;
-    }
-
-    /* TAX INVOICE BAR (Symphony style) */
-    .tax-invoice-bar {
-      display: none;
-      text-align: center;
-      font-size: 22px;
-      font-weight: bold;
+    .header-title {
       letter-spacing: 1px;
-      border: 1.5px solid #000;
-      padding: 5px;
-      margin-bottom: 15px;
-      z-index: 1;
     }
 
-    .brand-symphony .tax-invoice-bar {
-      display: block;
+    .header-main {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
     }
 
-    .details-box {
-      border: 1.5px solid #000;
-      margin-bottom: 15px;
-      z-index: 1;
+    .logo-left, .logo-right {
+      height: 55px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .company-info {
+      flex-grow: 1;
+      text-align: center;
+    }
+
+    .company-info h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    .company-info p {
+      margin: 2px 0;
+      font-size: 9px;
+      line-height: 1.3;
+    }
+
+    /* DETAILS SECTION */
+    .details-section {
+      width: 100%;
+      border-bottom: 1.5px solid #000;
     }
 
     .details-container {
       display: flex;
-      justify-content: space-between;
-      align-items: stretch;
+      width: 100%;
     }
 
     .col-left, .col-right {
-      padding: 10px 15px;
       width: 50%;
-      font-size: 12px;
-      line-height: 1.6;
+      padding: 8px 12px;
+      font-size: 10px;
+      line-height: 1.4;
     }
 
     .col-left {
@@ -131,54 +129,80 @@
     }
 
     .details-container p {
-      margin: 4px 0;
+      margin: 3px 0;
     }
 
     /* ITEMS TABLE */
-    .table-container {
-      z-index: 1;
+    .table-section {
       width: 100%;
+      border-bottom: 1.5px solid #000;
     }
 
     table.items-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 15px;
-      border: 1.5px solid #000;
+      border: none;
     }
 
     table.items-table th, table.items-table td {
-      border: 1.5px solid #000;
-      padding: 8px 10px;
-      font-size: 12px;
+      border-right: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      padding: 6px 8px;
+      font-size: 10px;
       vertical-align: middle;
     }
 
     table.items-table th {
-      background: #fff;
+      background: #f5f5f5;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    table.items-table th:first-child, table.items-table td:first-child {
+      text-align: center;
+      width: 45px;
+    }
+
+    table.items-table th:last-child, table.items-table td:last-child {
+      border-right: none;
+    }
+
+    table.items-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Table alignments for 7-column layout */
+    table.items-table td:nth-child(1),
+    table.items-table td:nth-child(3),
+    table.items-table td:nth-child(4),
+    table.items-table td:nth-child(5) {
+      text-align: center;
+    }
+
+    table.items-table td:nth-child(2) {
+      text-align: left;
+    }
+
+    table.items-table td:nth-child(6),
+    table.items-table td:nth-child(7) {
+      text-align: right;
+    }
+
+    tr.summary-row td {
+      font-weight: normal;
+      background: #fafafa;
+    }
+
+    tr.summary-row td:nth-child(2) {
       font-weight: bold;
     }
 
-    /* Table alignments for Atomberg */
-    .brand-atomberg table.items-table th:nth-child(2),
-    .brand-atomberg table.items-table th:nth-child(3),
-    .brand-atomberg table.items-table th:nth-child(4),
-    .brand-atomberg table.items-table td:nth-child(2),
-    .brand-atomberg table.items-table td:nth-child(3),
-    .brand-atomberg table.items-table td:nth-child(4) {
-      text-align: center;
-    }
-
-    /* Table alignments for Symphony */
-    .brand-symphony table.items-table th:nth-child(2),
-    .brand-symphony table.items-table th:nth-child(3),
-    .brand-symphony table.items-table th:nth-child(4),
-    .brand-symphony table.items-table th:nth-child(5),
-    .brand-symphony table.items-table td:nth-child(2),
-    .brand-symphony table.items-table td:nth-child(3),
-    .brand-symphony table.items-table td:nth-child(4),
-    .brand-symphony table.items-table td:nth-child(5) {
-      text-align: center;
+    /* Symphony Grand Total Row */
+    tr.grand-total-row td {
+      border-top: 1.5px solid #000 !important;
+      font-weight: bold;
+      background: #fafafa;
+      font-size: 11px !important;
     }
 
     /* TOTALS BOX (Atomberg style) */
@@ -186,75 +210,101 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      margin-bottom: 15px;
-      z-index: 1;
+      width: 100%;
+      border-bottom: 1.5px solid #000;
+      background: #fafafa;
     }
 
     .totals-row {
-      width: 280px;
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
-      padding: 4px 10px;
-      font-weight: bold;
+      width: 250px;
+      padding: 6px 12px;
+      font-size: 10px;
+      border-left: 1.5px solid #000;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .totals-row:last-child {
+      border-bottom: none;
     }
 
     .totals-row.grand-total {
-      font-size: 14px;
       font-weight: bold;
-      border-top: 1.5px solid #000;
-      padding-top: 6px;
-      margin-top: 4px;
+      font-size: 11px;
+      background: #f0f0f0;
+    }
+
+    /* TAX RATE TABLE (Dynamic) */
+    .tax-table-container {
+      width: 100%;
+      border-bottom: 1.5px solid #000;
+    }
+
+    table.tax-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: none;
+    }
+
+    table.tax-table th, table.tax-table td {
+      border-right: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      padding: 5px 8px;
+      font-size: 10px;
+      vertical-align: middle;
+    }
+
+    table.tax-table th {
+      background: #f5f5f5;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    table.tax-table th:last-child, table.tax-table td:last-child {
+      border-right: none;
+    }
+
+    table.tax-table tr:last-child td {
+      border-bottom: none;
     }
 
     /* WORDS SECTION */
     .words-section {
-      font-size: 11px;
-      margin-bottom: 15px;
-      z-index: 1;
-    }
-
-    .brand-atomberg .words-section {
+      padding: 8px 12px;
+      font-size: 10px;
+      background-color: #fafafa;
       border-bottom: 1.5px solid #000;
-      padding-bottom: 15px;
     }
 
-    .brand-symphony .words-section {
-      border: 1.5px solid #000;
-      padding: 8px 10px;
-    }
-
-    /* FOOTER */
-    .footer {
+    /* BANK, QR, STAMP FOOTER SECTION */
+    .footer-section {
       display: flex;
-      justify-content: space-between;
-      align-items: stretch;
-      margin-bottom: 15px;
-      z-index: 1;
+      width: 100%;
+      border-bottom: 1.5px solid #000;
     }
 
-    .bank-details {
-      width: 40%;
-      border: 1.5px solid #000;
-      padding: 10px;
-      font-size: 11px;
+    .bank-column {
+      width: 45%;
+      border-right: 1.5px solid #000;
+      padding: 10px 15px;
+      font-size: 10px;
       line-height: 1.5;
     }
 
-    .bank-details b {
+    .bank-column b {
       display: block;
       margin-bottom: 5px;
-      font-size: 12px;
+      font-size: 11px;
     }
 
-    .bank-details p {
+    .bank-column p {
       margin: 2px 0;
     }
 
-    .qr-section {
-      width: 25%;
-      border: 1.5px solid #000;
-      border-left: none;
+    .qr-column {
+      width: 20%;
+      border-right: 1.5px solid #000;
       padding: 10px;
       text-align: center;
       display: flex;
@@ -263,85 +313,69 @@
       justify-content: center;
     }
 
-/*  .brand-symphony .qr-section {
-      display: none;
-    } */
-
-    .qr-section img {
-      width: 75px;
-      height: 75px;
+    .qr-img {
+      width: 90px;
+      height: 90px;
       object-fit: contain;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
 
-    .qr-section p {
+    .qr-column p {
       margin: 0;
-      font-size: 11px;
+      font-size: 9px;
       font-weight: bold;
     }
 
-    .stamp-section {
+    .stamp-column {
       width: 35%;
-      border: 1.5px solid #000;
-      border-left: none;
       padding: 10px;
       text-align: center;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      justify-content: flex-end;
     }
 
-    .brand-symphony .stamp-section {
-      width: 60%; /* Spans remaining space because QR is hidden */
-      border-left: 1.5px solid #000;
-    }
-
-    .stamp-section img {
-      width: 110px;
-      height: auto;
+    .stamp-img {
+      height: 85px; /* increased stamp size as requested */
+      width: auto;
       object-fit: contain;
-      margin-bottom: 5px;
+      margin: 5px 0;
     }
 
-    .signatory-title {
-      margin: 0;
-      font-size: 11px;
+    .sig-title {
+      font-size: 9px;
       font-weight: bold;
+      line-height: 1.3;
+      width: 100%;
+    }
+
+    .sig-company {
+      margin: 0;
+    }
+
+    .sig-auth {
+      margin: 0;
+      border-top: 1px dashed #000;
+      padding-top: 4px;
+      width: 80%;
+      margin: 0 auto;
     }
 
     /* BOTTOM NOTES */
     .bottom-notes {
+      padding: 8px;
       text-align: center;
-      font-size: 10px;
-      line-height: 1.5;
-      z-index: 1;
+      font-size: 8px;
+      line-height: 1.3;
     }
 
     .bottom-notes p {
-      margin: 3px 0;
+      margin: 2px 0;
     }
 
     .payable-note {
       font-weight: bold;
-      font-size: 11px;
-    }
-
-    /* THANK YOU BAR (Symphony style) */
-    .thank-you-bar {
-      display: none;
-      background: #000;
-      color: #fff;
-      text-align: center;
-      font-size: 12px;
-      font-weight: bold;
-      padding: 6px;
-      margin-top: 15px;
-      z-index: 1;
-    }
-
-    .brand-symphony .thank-you-bar {
-      display: block;
     }
 
     /* PRINT LAYOUT */
@@ -361,69 +395,71 @@
   <div class="page">
 
     <!-- WATERMARK -->
-    <img src="company_logo_lighttheme.png" class="watermark">
-    <!-- <img src="{{logoBase64}}" class="watermark"> -->
+    <img src="{{logoBase64}}" class="watermark">
 
     <!-- HEADER -->
-    <div class="header">
-      <img src="{{logoBase64}}" class="logo-left">
-      <img src="{{brandLogoBase64}}" class="logo-right" style="width: {{brandLogoWidth}}px; display: {{brandLogoDisplay}};">
-      
-      <h1>Electrolyte Solutions</h1>
-      <p><b>{{partnerSubtitle}}</b></p>
-      <p>{{addressLine}}</p>
-      <p>Phone: {{phoneLine}}</p>
-      {{gstinLine}}
-      <p>Email ID: {{emailLine}}</p>
+    <div class="header-section">
+      <div class="header-top-row">
+        <div class="header-gstin">{{gstinLine}}</div>
+        <div class="header-title">TAX INVOICE</div>
+      </div>
+      <div class="header-main">
+        <img src="{{logoBase64}}" class="logo-left">
+        <div class="company-info">
+          <h1>Electrolyte Solutions</h1>
+          <p class="subtitle"><b>{{partnerSubtitle}}</b></p>
+          <p>{{addressLine}}</p>
+          <p>Phone: {{phoneLine}} | Email ID: {{emailLine}}</p>
+        </div>
+        <img src="{{brandLogoBase64}}" class="logo-right" style="width: {{brandLogoWidth}}px; display: {{brandLogoDisplay}};">
+      </div>
     </div>
 
-    <!-- TAX INVOICE BAR (Only for Symphony) -->
-    <div class="tax-invoice-bar">
-      TAX INVOICE
-    </div>
-
-    <!-- DETAILS BOX (Unified large box) -->
-    <div class="details-box">
+    <!-- DETAILS BOX -->
+    <div class="details-section">
       {{detailsBoxContent}}
     </div>
 
     <!-- ITEMS TABLE -->
-    <div class="table-container">
+    <div class="table-section">
       {{tableMarkup}}
     </div>
 
     <!-- TOTALS SECTION (Only populated for Atomberg) -->
     {{totalsBlock}}
 
+    <!-- TAX RATE TABLE SECTION -->
+    {{taxTableBlock}}
+
     <!-- IN WORDS SECTION -->
     <div class="words-section">
       {{wordsText}}
     </div>
 
-    <!-- FOOTER WITH BANK, QR, STAMP -->
-    <div class="footer">
-      
+    <!-- BANK, QR, STAMP FOOTER SECTION -->
+    <div class="footer-section">
       <!-- BANK DETAILS -->
-      <div class="bank-details">
+      <div class="bank-column">
         <b>Bank Details</b>
         {{bankDetailsContent}}
       </div>
 
       <!-- QR CODE -->
-      <div class="qr-section">
-        <!-- <img src="qr_code.jpeg"> -->
-        <img src="{{qrBase64}}">
+      <div class="qr-column">
+        <img src="{{qrBase64}}" class="qr-img">
         <p>Scan to Pay</p>
       </div>
 
-      <!-- STAMP -->
-      <div class="stamp-section">
-        <img src="{{stampBase64}}">
-        <p class="signatory-title">
-          {{signatoryTitle}}
-        </p>
+      <!-- STAMP & SIGNATURE -->
+      <div class="stamp-column">
+        <div class="sig-title">
+          <p class="sig-company">Electrolyte Solutions</p>
+        </div>
+        <img src="{{stampBase64}}" class="stamp-img">
+        <div class="sig-title">
+          <p class="sig-auth">{{signatoryTitle}}</p>
+        </div>
       </div>
-
     </div>
 
     <!-- BOTTOM NOTES & LEGAL -->
@@ -432,11 +468,6 @@
       <p class="warranty-note">{{warrantyNote}}</p>
       <p>This is a computer-generated invoice. No signature required.</p>
       <p><b>Subjected to Navi Mumbai Jurisdiction.</b></p>
-    </div>
-
-    <!-- THANK YOU BAR (Only for Symphony) -->
-    <div class="thank-you-bar">
-      THANK YOU FOR YOUR BUSINESS!
     </div>
 
   </div>
