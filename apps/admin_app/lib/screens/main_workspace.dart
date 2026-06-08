@@ -11,6 +11,8 @@ import 'price_upload_screen.dart';
 import 'upload_history_screen.dart';
 import 'admin_chatbot_screen.dart';
 import 'admin_billing_screen.dart';
+import 'user_management_screen.dart';
+import '../providers/user_provider.dart';
 import '../utils/theme.dart';
 
 class MainWorkspace extends StatefulWidget {
@@ -37,6 +39,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return 'Chatbot';
       case 5:
         return 'Invoice';
+      case 6:
+        return 'User Management';
       default:
         return 'Admin Control Panel';
     }
@@ -69,6 +73,9 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         Provider.of<ChatHistoryProvider>(context, listen: false).fetchSessions();
         Provider.of<ChatProvider>(context, listen: false).startNewChat();
         break;
+      case 6:
+        Provider.of<UserProvider>(context, listen: false).fetchUsers();
+        break;
     }
   }
 
@@ -86,6 +93,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return dashboard.isLoading;
       case 4:
         return Provider.of<ChatHistoryProvider>(context).isLoading || Provider.of<ChatProvider>(context).isLoading;
+      case 6:
+        return Provider.of<UserProvider>(context).isLoading;
       default:
         return false;
     }
@@ -140,6 +149,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       const UploadHistoryScreen(),
       const AdminChatbotScreen(),
       const AdminBillingScreen(),
+      const UserManagementScreen(),
     ];
 
     final bool isLoading = _isPageLoading(context);

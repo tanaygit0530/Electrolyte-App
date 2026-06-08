@@ -18,8 +18,8 @@ const requireTechnicianAuth = (req, res, next) => {
     const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
     const decoded = jwt.verify(token, secret);
     
-    if (decoded.role !== 'technician') {
-      return res.status(403).json({ error: 'Forbidden: Requires technician role.' });
+    if (decoded.role !== 'technician' && decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Requires technician or admin role.' });
     }
 
     // Attach user info to request

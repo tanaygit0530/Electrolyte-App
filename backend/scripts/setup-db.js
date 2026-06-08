@@ -153,9 +153,22 @@ const setup = async () => {
         'INSERT INTO admins (email, password_hash) VALUES ($1, $2)',
         [adminEmail, passwordHash]
       );
-      console.log(`- Default admin seeded successfully: ${adminEmail} / ${adminPassword}`);
+      console.log(`- Default admin seeded successfully in admins table: ${adminEmail}`);
     } else {
-      console.log('- Admin user already exists');
+      console.log('- Admin user already exists in admins table');
+    }
+
+    // Also verify admin is in users table for customer app and unified tracking
+    const checkAdminInUsers = await pool.query('SELECT * FROM users WHERE email = $1', [adminEmail]);
+    if (checkAdminInUsers.rows.length === 0) {
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+      await pool.query(
+        "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')",
+        [adminEmail, passwordHash]
+      );
+      console.log(`- Default admin seeded successfully in users table`);
+    } else {
+      console.log('- Admin user already exists in users table');
     }
 
     // 3. Seed default technician user if not exists

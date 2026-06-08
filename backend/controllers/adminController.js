@@ -339,11 +339,90 @@ const getPriceHistory = async (req, res) => {
   }
 };
 
+// Get all users
+const getUsers = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, email, role, created_at FROM users ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get Users Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// Create a new user (technician or admin)
+const createUser = async (req, res) => {
+  const { email, password, role } = req.body;
+
+  if (!email || !password || !role) {
+    return res.status(400).json({ error: 'Email, password, and role are required' });
+  }
+
+  if (role !== 'admin' && role !== 'technician') {
+    return res.status(400).json({ error: 'Invalid role. Must be admin or technician' });
+  }
+
+  let client;
+  try {
+    const lowerEmail = email.toLowerCase().trim();
+    
+    // Check if user already exists
+    const checkUser = await pool.query('SELECT * FROM users WHERE email = $1', [lowerEmail]);
+    if (checkUser.rows.length > 0) {
+      return res.status(400).json({ error: 'A user with this email already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Insert into users table
+    const userInsert = await client.query(
+      'INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role, created_at',
+      [lowerEmail, passwordHash, role]
+    );
+    const newUser = userInsert.rows[0];
+
+    // If role is admin, also insert into admins table
+    if (role === 'admin') {
+      await client.query(
+        'INSERT INTO admins (email, password_hash) VALUES ($1, $2)',
+        [lowerEmail, passwordHash]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: newUser
+    });
+
+  } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Error rolling back user creation:', rollbackError);
+      }
+    }
+    console.error('Create User Error:', error);
+    res.status(500).json({ error: 'Internal Server Error creating user' });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+};
+
 module.exports = {
   login,
   uploadStock,
   uploadPrice,
   getDashboardStats,
   getStockHistory,
-  getPriceHistory
+  getPriceHistory,
+  getUsers,
+  createUser
 };

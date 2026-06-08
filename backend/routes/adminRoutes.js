@@ -12,5 +12,7 @@ router.post('/upload-price', adminAuth, adminController.uploadPrice);
 router.get('/dashboard', adminAuth, adminController.getDashboardStats);
 router.get('/stock-history', adminAuth, adminController.getStockHistory);
 router.get('/price-history', adminAuth, adminController.getPriceHistory);
+router.get('/users', adminAuth, adminController.getUsers);
+router.post('/users', adminAuth, adminController.createUser);
 
 module.exports = router;

@@ -192,4 +192,34 @@ class ApiService {
       throw Exception(msg);
     }
   }
+
+  /// Fetch all users
+  Future<List<Map<String, dynamic>>> getUsers() async {
+    try {
+      final response = await _dio.get('$baseUrl/api/admin/users');
+      final list = _parseListResponse(response.data);
+      return list.map((item) => Map<String, dynamic>.from(item)).toList();
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to retrieve users list';
+      throw Exception(msg);
+    }
+  }
+
+  /// Create a new user
+  Future<Map<String, dynamic>> createUser(String email, String password, String role) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/api/admin/users',
+        data: {'email': email, 'password': password, 'role': role},
+      );
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to create user';
+      throw Exception(msg);
+    }
+  }
 }
