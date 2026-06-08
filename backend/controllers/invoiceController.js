@@ -27,6 +27,7 @@ const formatInvoice = (inv) => ({
 });
 
 const createInvoice = async (req, res) => {
+  const totalStart = Date.now();
   try {
     const payload = req.body;
     const { 
@@ -57,13 +58,9 @@ const createInvoice = async (req, res) => {
     const totalAmount = subTotal + gstAmount + sCharge;
 
     // Generate invoice number ES/26-27/OWXXXX
-    const countRes = await pool.query('SELECT COUNT(*) FROM invoices');
-    const count = parseInt(countRes.rows[0].count || 0);
-    const sequence = (count + 1).toString().padStart(4, '0');
-    const warrantyCode = (warrantyType || 'OW').toUpperCase();
-    const invoiceNumber = `ES/26-27/${warrantyCode}${sequence}`;
-
+    console.time('Database Insert & Invoice Number Generation');
     const itemsJson = JSON.stringify(items);
+    const tempInvoiceNumber = `TEMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     const invoiceRes = await pool.query(
       `INSERT INTO invoices (
@@ -73,47 +70,75 @@ const createInvoice = async (req, res) => {
        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15)
        RETURNING *`,
       [
-        invoiceNumber, preparedBy || 'Technician', customerName, customerEmail, customerPhone,
+        tempInvoiceNumber, preparedBy || 'Technician', customerName, customerEmail, customerPhone,
         itemsJson, subTotal, gstAmount, sCharge, totalAmount,
         brand, serialNumber, caseId, warrantyType, preparedBy
       ]
     );
 
     const savedInvoice = invoiceRes.rows[0];
+    const savedId = savedInvoice.id;
+
+    // Generate real invoice number from returned ID
+    const sequence = savedId.toString().padStart(4, '0');
+    const warrantyCode = (warrantyType || 'OW').toUpperCase();
+    const invoiceNumber = `ES/26-27/${warrantyCode}${sequence}`;
+    
+    // Mutate the local object for PDF generation
+    savedInvoice.invoice_number = invoiceNumber;
+
+    // Update real invoice number in DB (non-blocking)
+    pool.query('UPDATE invoices SET invoice_number = $1 WHERE id = $2', [invoiceNumber, savedId])
+      .catch(err => console.error('DB Update Error (Invoice Number):', err));
+      
+    console.timeEnd('Database Insert & Invoice Number Generation');
 
     // Generate PDF
+    console.time('PDF Generation');
     const formattedInvoiceForPDF = formatInvoice(savedInvoice);
     const pdfBuffer = await generatePDF(formattedInvoiceForPDF);
+    console.timeEnd('PDF Generation');
 
-    let pdfUrl = '';
+    console.log(`Total Request Time (excluding upload & email): ${Date.now() - totalStart}ms`);
 
-    // Upload to Cloudinary
-    try {
-      if (process.env.CLOUDINARY_CLOUD_NAME) {
-         pdfUrl = await uploadToCloudinary(pdfBuffer, `${invoiceNumber.replace(/\//g, '_')}_${Date.now()}`);
-         await pool.query('UPDATE invoices SET pdf_url = $1 WHERE id = $2', [pdfUrl, savedInvoice.id]);
-      } else {
-        console.warn("CLOUDINARY_CLOUD_NAME not set, skipping upload.");
-      }
-    } catch (uploadError) {
-      console.error("Cloudinary Upload Error:", uploadError);
-    }
-
-    // Send Email
-    if (customerEmail) {
-      try {
-        await sendEmail(customerEmail, invoiceNumber, pdfBuffer, pdfUrl);
-      } catch (emailError) {
-        console.error("Email Sending Error:", emailError);
-      }
-    }
-
+    // Return response immediately, passing base64 to avoid CORS issues on Flutter Web preview
     res.status(201).json({
-      message: 'Invoice generated and emailed successfully',
+      message: 'Invoice generated successfully',
       invoiceId: savedInvoice.id,
       invoiceNumber,
-      pdfUrl: pdfUrl || savedInvoice.pdf_url,
+      pdfBase64: pdfBuffer.toString('base64')
     });
+
+    // --- BACKGROUND TASKS ---
+    (async () => {
+      let finalPdfUrl = '';
+      
+      // 1. Upload to Cloudinary
+      console.time('Cloudinary Upload (Background)');
+      try {
+        if (process.env.CLOUDINARY_CLOUD_NAME) {
+           finalPdfUrl = await uploadToCloudinary(pdfBuffer, `${invoiceNumber.replace(/\//g, '_')}_${Date.now()}`);
+           await pool.query('UPDATE invoices SET pdf_url = $1 WHERE id = $2', [finalPdfUrl, savedInvoice.id]);
+        } else {
+          console.warn("CLOUDINARY_CLOUD_NAME not set, skipping upload.");
+        }
+      } catch (uploadError) {
+        console.error("Cloudinary Upload Error:", uploadError);
+      }
+      console.timeEnd('Cloudinary Upload (Background)');
+      
+      // 2. Send Email
+      if (customerEmail) {
+        console.time('Email Sending (Background)');
+        try {
+          await sendEmail(customerEmail, invoiceNumber, pdfBuffer, finalPdfUrl);
+          console.log(`Email successfully sent to ${customerEmail}`);
+        } catch (emailError) {
+          console.error("Email Sending Error:", emailError);
+        }
+        console.timeEnd('Email Sending (Background)');
+      }
+    })();
 
   } catch (error) {
     console.error("Invoice Creation Error:", error);

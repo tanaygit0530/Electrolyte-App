@@ -45,6 +45,8 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
+const { closeBrowser } = require('./services/pdfService');
+
 // Global process error handlers to log and prevent automatic exit on unhandled promise rejections or exceptions
 process.on('unhandledRejection', (reason, promise) => {
   console.error('⚠️ Unhandled Promise Rejection at:', promise, 'reason:', reason);
@@ -52,4 +54,17 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err) => {
   console.error('⚠️ Uncaught Exception detected:', err);
+});
+
+// Clean shutdown listeners to close Puppeteer browser instance
+process.on('SIGINT', async () => {
+  console.log('Server shutting down...');
+  await closeBrowser();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Server terminated');
+  await closeBrowser();
+  process.exit(0);
 });
