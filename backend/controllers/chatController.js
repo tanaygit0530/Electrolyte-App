@@ -43,11 +43,11 @@ exports.processChat = async (req, res) => {
 
       const sessionRes = await client.query(
         `
-        INSERT INTO chat_sessions (title)
-        VALUES ($1)
+        INSERT INTO chat_sessions (title, user_id)
+        VALUES ($1, $2)
         RETURNING id
         `,
-        [title]
+        [title, req.user.id]
       );
 
       sessionId = sessionRes.rows[0].id;
@@ -184,7 +184,8 @@ exports.processChat = async (req, res) => {
 exports.getSessions = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM chat_sessions ORDER BY updated_at DESC'
+      'SELECT * FROM chat_sessions WHERE user_id = $1 ORDER BY updated_at DESC',
+      [req.user.id]
     );
 
     res.json(result.rows);

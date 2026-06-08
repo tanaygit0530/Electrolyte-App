@@ -99,6 +99,7 @@ const setup = async () => {
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         title VARCHAR(255) DEFAULT 'New Chat',
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -136,11 +137,21 @@ const setup = async () => {
         case_id VARCHAR(255),
         warranty_type VARCHAR(255),
         prepared_by VARCHAR(255),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
     console.log('- invoices table verified/created');
+
+    // Run migrations to update existing tables if columns are missing
+    await pool.query(`
+      ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    `);
+    await pool.query(`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    `);
+    console.log('- table alteration migrations executed');
 
     // 2. Seed default admin if not exists
     const adminEmail = 'admin@electrolyte.com';

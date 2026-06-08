@@ -75,20 +75,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               child: LinearProgressIndicator(),
             ),
           _buildInputArea(chatProvider, isDark),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: TextButton(
-              onPressed: () {},
-              child: const Text(
-                "Report Inappropriate AI Response",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ),
+          // Padding(
+          //   padding: const EdgeInsets.only(bottom: 8.0),
+          //   child: TextButton(
+          //     onPressed: () {},
+          //     child: const Text(
+          //       "Report Inappropriate AI Response",
+          //       style: TextStyle(
+          //         fontSize: 12,
+          //         color: Colors.grey,
+          //         decoration: TextDecoration.underline,
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

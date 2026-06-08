@@ -265,7 +265,6 @@ const buildUnifiedDetailsBox = (invoiceData, formattedDate) => {
       <div class="col-left">
         <p><b>Party Details :</b></p>
         <p><b>BILL TO:</b> ${invoiceData.customerName || 'Jay'}</p>
-        <p><b>ADDRESS:</b> ${invoiceData.customerAddress || '-'}</p>
         ${phoneLine}
         ${customerEmailLine}
         ${serialLine}

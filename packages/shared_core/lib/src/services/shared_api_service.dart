@@ -188,4 +188,14 @@ class SharedApiService {
       throw Exception('Failed to create invoice');
     }
   }
+
+  Future<List<dynamic>> getInvoices() async {
+    final response = await _get('$baseUrl/invoice');
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['invoices'] ?? [];
+    } else {
+      throw Exception('Failed to load invoices');
+    }
+  }
 }

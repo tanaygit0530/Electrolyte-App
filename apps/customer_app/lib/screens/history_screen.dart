@@ -4,6 +4,8 @@ import '../providers/order_provider.dart';
 import '../providers/chat_history_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/invoice_provider.dart';
+import 'invoice_preview_screen.dart';
 import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -20,13 +22,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderProvider>().fetchOrders();
       context.read<ChatHistoryProvider>().fetchSessions();
+      context.read<InvoiceProvider>().fetchInvoices();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -37,6 +40,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             tabs: [
               Tab(text: "Orders"),
               Tab(text: "Chats"),
+              Tab(text: "Invoices"),
             ],
             indicatorColor: Color(0xFFFFC107),
             labelColor: Color(0xFFFFC107),
@@ -48,11 +52,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
               onPressed: () {
                 context.read<OrderProvider>().fetchOrders();
                 context.read<ChatHistoryProvider>().fetchSessions();
+                context.read<InvoiceProvider>().fetchInvoices();
               },
             ),
           ],
         ),
-        body: TabBarView(children: [_buildOrderHistory(), _buildChatHistory()]),
+        body: TabBarView(
+          children: [
+            _buildOrderHistory(),
+            _buildChatHistory(),
+            _buildInvoiceHistory(),
+          ],
+        ),
       ),
     );
   }
@@ -112,6 +123,49 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 final navProvider = context.read<NavigationProvider>();
                 await chatProvider.loadSession(session.id);
                 navProvider.setIndex(0);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildInvoiceHistory() {
+    return Consumer<InvoiceProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (provider.invoices.isEmpty) {
+          return const Center(child: Text("No invoice history found."));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: provider.invoices.length,
+          itemBuilder: (context, index) {
+            final invoice = provider.invoices[index];
+            return _HistoryCard(
+              title: invoice.invoiceNumber.isNotEmpty ? invoice.invoiceNumber : "Invoice #${invoice.id}",
+              subtitle: "Customer: ${invoice.customerName}\nPrepared by: ${invoice.preparedBy ?? 'N/A'}",
+              date: DateFormat('dd MMM yyyy, hh:mm a').format(invoice.createdAt),
+              status: "₹${invoice.totalAmount.toStringAsFixed(2)}",
+              icon: Icons.receipt_long_outlined,
+              onTap: () {
+                if (invoice.pdfUrl != null && invoice.pdfUrl!.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => InvoicePreviewScreen(pdfUrl: invoice.pdfUrl!),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PDF preview is not available yet. Cloudinary upload might be in progress.'),
+                    ),
+                  );
+                }
               },
             );
           },

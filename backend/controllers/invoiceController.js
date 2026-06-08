@@ -66,13 +66,13 @@ const createInvoice = async (req, res) => {
       `INSERT INTO invoices (
         invoice_number, technician_name, customer_name, customer_email, customer_phone,
         items, sub_total, gst_amount, service_charge, total_amount, status,
-        brand, serial_number, case_id, warranty_type, prepared_by
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15)
+        brand, serial_number, case_id, warranty_type, prepared_by, user_id
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15, $16)
        RETURNING *`,
       [
         tempInvoiceNumber, preparedBy || 'Technician', customerName, customerEmail, customerPhone,
         itemsJson, subTotal, gstAmount, sCharge, totalAmount,
-        brand, serialNumber, caseId, warrantyType, preparedBy
+        brand, serialNumber, caseId, warrantyType, preparedBy, req.user.id
       ]
     );
 
@@ -151,8 +151,8 @@ const getInvoices = async (req, res) => {
     const { search, status } = req.query;
 
     let queryStr = 'SELECT * FROM invoices';
-    const params = [];
-    const conditions = [];
+    const params = [req.user.id];
+    const conditions = ['user_id = $1'];
 
     if (search) {
       params.push(`%${search}%`);
