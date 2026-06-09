@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../utils/theme.dart';
 
 class AdminSidebar extends StatelessWidget {
@@ -228,6 +229,7 @@ class AdminSidebar extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
+                      Provider.of<DashboardProvider>(context, listen: false).closeWebSocket();
                       auth.logout();
                     },
                     icon: const Icon(Icons.logout, size: 16),

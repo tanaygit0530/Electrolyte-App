@@ -326,7 +326,7 @@ const generatePDF = async (invoiceData) => {
     let addressLine = 'Plot 70, Sector 1 Road No. 1, Ghansoli, Navi Mumbai, Maharashtra - 400701';
     let phoneLine = '+91 8090712828 / 8104096232';
     let emailLine = 'electrolytesolnservice@gmail.com';
-    let gstinLine = '';
+    let gstinLine = '27AJYPY7934L1ZS';
 
     let bankDetailsContent = `
       <p>A/c Name: M/s Electrolyte Solutions</p>

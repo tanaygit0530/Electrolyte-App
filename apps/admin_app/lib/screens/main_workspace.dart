@@ -306,6 +306,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
                               iconSize: 22,
                               tooltip: 'Logout Session',
                               onPressed: () {
+                                Provider.of<DashboardProvider>(context, listen: false).closeWebSocket();
                                 auth.logout();
                               },
                             ),

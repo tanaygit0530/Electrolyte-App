@@ -42,6 +42,15 @@ class ApiService {
     return _defaultUrl;
   }
 
+  static String get wsUrl {
+    final base = baseUrl;
+    if (base.startsWith('https://')) {
+      return base.replaceFirst('https://', 'wss://');
+    } else {
+      return base.replaceFirst('http://', 'ws://');
+    }
+  }
+
   /// Defensive parser to safely handle both pre-parsed Maps and raw JSON Strings
   Map<String, dynamic> _parseMapResponse(dynamic data) {
     if (data == null) return {};
