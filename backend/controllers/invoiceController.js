@@ -22,6 +22,9 @@ const formatInvoice = (inv) => ({
   caseId: inv.case_id,
   warrantyType: inv.warranty_type,
   preparedBy: inv.prepared_by,
+  mop: inv.mop || 'UPI',
+  zipCode: inv.zip_code || '400001',
+  remark: inv.remark || '',
   createdAt: inv.created_at,
   updatedAt: inv.updated_at
 });
@@ -66,13 +69,15 @@ const createInvoice = async (req, res) => {
       `INSERT INTO invoices (
         invoice_number, technician_name, customer_name, customer_email, customer_phone,
         items, sub_total, gst_amount, service_charge, total_amount, status,
-        brand, serial_number, case_id, warranty_type, prepared_by, user_id
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15, $16)
+        brand, serial_number, case_id, warranty_type, prepared_by, user_id,
+        mop, zip_code, remark
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15, $16, $17, $18, $19)
        RETURNING *`,
       [
         tempInvoiceNumber, preparedBy || 'Technician', customerName, customerEmail, customerPhone,
         itemsJson, subTotal, gstAmount, sCharge, totalAmount,
-        brand, serialNumber, caseId, warrantyType, preparedBy, req.user.id
+        brand, serialNumber, caseId, warrantyType, preparedBy, req.user.id,
+        payload.mop || 'UPI', payload.zipCode || '400001', payload.remark || ''
       ]
     );
 

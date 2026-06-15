@@ -151,7 +151,74 @@ const setup = async () => {
     await pool.query(`
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
+    await pool.query(`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20) DEFAULT '400001';
+    `);
+    await pool.query(`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS remark TEXT DEFAULT '';
+    `);
+    await pool.query(`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS mop VARCHAR(50) DEFAULT 'UPI';
+    `);
+
+    // Backfill any null values in existing records
+    await pool.query(`
+      UPDATE invoices SET zip_code = '400001' WHERE zip_code IS NULL;
+      UPDATE invoices SET remark = 'Paid' WHERE remark IS NULL;
+      UPDATE invoices SET mop = 'UPI' WHERE mop IS NULL;
+    `);
     console.log('- table alteration migrations executed');
+
+    // Seed dummy invoices if table is empty
+    const invoiceCountRes = await pool.query('SELECT COUNT(*) FROM invoices');
+    if (parseInt(invoiceCountRes.rows[0].count || '0') === 0) {
+      console.log('Seeding dummy invoices for reports test...');
+      
+      // Get first user id
+      const userRes = await pool.query("SELECT id FROM users LIMIT 1");
+      const userId = userRes.rows[0] ? userRes.rows[0].id : null;
+      
+      const dummyInvoices = [
+        {
+          num: 'ES/26-27/OW0001', tech: 'Adesh Vartak', cust: 'Rahul Sharma', email: 'rahul@example.com',
+          items: [{description: 'Main PCB Controller Board', qty: 1, rate: 1500.00}], sub: 1500.00, gst: 270.00, serv: 150.00, total: 1920.00,
+          brand: 'Atomberg', serial: 'AT8837721', caseId: 'CASE-9921', warranty: 'OW', mop: 'UPI', zip: '400072', remark: 'Paid via PhonePe'
+        },
+        {
+          num: 'ES/26-27/OW0002', tech: 'Anees Idrisi', cust: 'Amit Patel', email: 'amit@example.com',
+          items: [{description: 'High Speed Cooling Fan', qty: 2, rate: 299.00}], sub: 598.00, gst: 107.64, serv: 100.00, total: 805.64,
+          brand: 'Symphony', serial: 'SY22819', caseId: 'CASE-1033', warranty: 'OW', mop: 'Cash', zip: '400001', remark: 'Cash collected on-site'
+        },
+        {
+          num: 'ES/26-27/OW0003', tech: 'Kishor Patil', cust: 'Sneha Rao', email: 'sneha@example.com',
+          items: [{description: 'Universal Power Supply Unit Module', qty: 1, rate: 850.50}], sub: 850.50, gst: 153.09, serv: 200.00, total: 1203.59,
+          brand: 'Bajaj', serial: 'BJ993821', caseId: 'CASE-1044', warranty: 'OW', mop: 'Bank Transfer', zip: '400088', remark: 'NEFT completed'
+        },
+        {
+          num: 'ES/26-27/IW0004', tech: 'Adesh Vartak', cust: 'Vijay Kumar', email: 'vijay@example.com',
+          items: [{description: 'Alphanumeric LCD Display Panel', qty: 1, rate: 420.00}], sub: 420.00, gst: 0.00, serv: 0.00, total: 420.00,
+          brand: 'Atomberg', serial: 'AT8899211', caseId: 'CASE-1055', warranty: 'IW', mop: 'Others', zip: '400099', remark: 'Under Warranty'
+        }
+      ];
+
+      for (const inv of dummyInvoices) {
+        await pool.query(
+          `INSERT INTO invoices (
+            invoice_number, technician_name, customer_name, customer_email,
+            items, sub_total, gst_amount, service_charge, total_amount, status,
+            brand, serial_number, case_id, warranty_type, prepared_by, user_id,
+            mop, zip_code, remark
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Generated', $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+          [
+            inv.num, inv.tech, inv.cust, inv.email,
+            JSON.stringify(inv.items), inv.sub, inv.gst, inv.serv, inv.total,
+            inv.brand, inv.serial, inv.caseId, inv.warranty, inv.tech, userId,
+            inv.mop, inv.zip, inv.remark
+          ]
+        );
+      }
+      console.log('- dummy invoices seeded');
+    }
 
     // 2. Seed default admin if not exists
     const adminEmail = 'admin@electrolyte.com';

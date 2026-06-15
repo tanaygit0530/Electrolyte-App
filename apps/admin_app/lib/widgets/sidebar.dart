@@ -135,7 +135,7 @@ class AdminSidebar extends StatelessWidget {
                 _SidebarItem(
                   icon: Icons.chat_bubble_outline,
                   activeIcon: Icons.chat_bubble,
-                  title: 'Chatbot',
+                  title: 'Chatbot Assistant',
                   isSelected: selectedIndex == 4,
                   onTap: () => onDestinationSelected(4),
                 ),
@@ -143,15 +143,15 @@ class AdminSidebar extends StatelessWidget {
                 _SidebarItem(
                   icon: Icons.receipt_long_outlined,
                   activeIcon: Icons.receipt_long,
-                  title: 'Invoice',
+                  title: 'Invoice Generator',
                   isSelected: selectedIndex == 5,
                   onTap: () => onDestinationSelected(5),
                 ),
                 const SizedBox(height: 10),
                 _SidebarItem(
-                  icon: Icons.manage_accounts_outlined,
-                  activeIcon: Icons.manage_accounts,
-                  title: 'User Management',
+                  icon: Icons.analytics_outlined,
+                  activeIcon: Icons.analytics,
+                  title: 'Technician Revenue Reports',
                   isSelected: selectedIndex == 6,
                   onTap: () => onDestinationSelected(6),
                 ),

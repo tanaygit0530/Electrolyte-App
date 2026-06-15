@@ -12,7 +12,9 @@ import 'upload_history_screen.dart';
 import 'admin_chatbot_screen.dart';
 import 'admin_billing_screen.dart';
 import 'user_management_screen.dart';
+import 'technician_revenue_report_screen.dart';
 import '../providers/user_provider.dart';
+import '../providers/report_provider.dart';
 import '../utils/theme.dart';
 
 class MainWorkspace extends StatefulWidget {
@@ -36,11 +38,11 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       case 3:
         return 'Historical Upload Logs';
       case 4:
-        return 'Chatbot';
+        return 'Chatbot Assistant';
       case 5:
-        return 'Invoice';
+        return 'Invoice Generator';
       case 6:
-        return 'User Management';
+        return 'Technician Revenue Reports';
       default:
         return 'Admin Control Panel';
     }
@@ -74,7 +76,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         Provider.of<ChatProvider>(context, listen: false).startNewChat();
         break;
       case 6:
-        Provider.of<UserProvider>(context, listen: false).fetchUsers();
+        Provider.of<ReportProvider>(context, listen: false).fetchReport();
         break;
     }
   }
@@ -94,7 +96,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       case 4:
         return Provider.of<ChatHistoryProvider>(context).isLoading || Provider.of<ChatProvider>(context).isLoading;
       case 6:
-        return Provider.of<UserProvider>(context).isLoading;
+        return Provider.of<ReportProvider>(context).isLoading;
       default:
         return false;
     }
@@ -149,7 +151,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       const UploadHistoryScreen(),
       const AdminChatbotScreen(),
       const AdminBillingScreen(),
-      const UserManagementScreen(),
+      const TechnicianRevenueReportScreen(),
     ];
 
     final bool isLoading = _isPageLoading(context);

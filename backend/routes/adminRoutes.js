@@ -15,4 +15,9 @@ router.get('/price-history', adminAuth, adminController.getPriceHistory);
 router.get('/users', adminAuth, adminController.getUsers);
 router.post('/users', adminAuth, adminController.createUser);
 
+// Reports routes
+router.get('/reports/technician-revenue', adminAuth, adminController.getTechnicianRevenueReport);
+router.get('/reports/technician-summary', adminAuth, adminController.getTechnicianSummaryReport);
+router.get('/reports/export-excel', adminAuth, adminController.exportExcelReport);
+
 module.exports = router;

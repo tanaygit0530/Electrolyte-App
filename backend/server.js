@@ -92,9 +92,25 @@ const broadcastDashboardStats = async () => {
   }
 };
 
+const broadcastInvoiceUpdate = async () => {
+  try {
+    const payload = JSON.stringify({
+      type: 'invoice_update'
+    });
+
+    for (const client of wssClients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to broadcast invoice update:', err);
+  }
+};
+
 const setupDatabaseTriggerAndListener = async () => {
   try {
-    // 1. Create statement-level trigger in DB to notify on products table updates
+    // 1. Create statement-level trigger in DB to notify on products and invoices updates
     const triggerQueries = [
       `CREATE OR REPLACE FUNCTION notify_products_change()
        RETURNS trigger AS $$
@@ -107,13 +123,26 @@ const setupDatabaseTriggerAndListener = async () => {
       `CREATE TRIGGER products_change_trigger
        AFTER INSERT OR UPDATE OR DELETE ON products
        FOR EACH STATEMENT
-       EXECUTE FUNCTION notify_products_change();`
+       EXECUTE FUNCTION notify_products_change();`,
+       
+      `CREATE OR REPLACE FUNCTION notify_invoices_change()
+       RETURNS trigger AS $$
+       BEGIN
+         PERFORM pg_notify('invoices_channel', 'change');
+         RETURN NULL;
+       END;
+       $$ LANGUAGE plpgsql;`,
+      `DROP TRIGGER IF EXISTS invoices_change_trigger ON invoices;`,
+      `CREATE TRIGGER invoices_change_trigger
+       AFTER INSERT OR UPDATE OR DELETE ON invoices
+       FOR EACH STATEMENT
+       EXECUTE FUNCTION notify_invoices_change();`
     ];
 
     for (const q of triggerQueries) {
       await pool.query(q);
     }
-    console.log('PostgreSQL products_change_trigger and notify function set up successfully');
+    console.log('PostgreSQL trigger functions set up successfully');
 
     // 2. Set up a dedicated client to LISTEN to the channel
     const listenClient = new Client({
@@ -123,11 +152,16 @@ const setupDatabaseTriggerAndListener = async () => {
 
     await listenClient.connect();
     await listenClient.query('LISTEN products_channel');
-    console.log('Listening to PostgreSQL products_channel notifications...');
+    await listenClient.query('LISTEN invoices_channel');
+    console.log('Listening to PostgreSQL notifications (products_channel, invoices_channel)...');
 
     listenClient.on('notification', (msg) => {
-      console.log('Received PostgreSQL notification on products_channel. Broadcasting stats...');
-      broadcastDashboardStats();
+      console.log(`Received PostgreSQL notification on ${msg.channel}. Broadcasting...`);
+      if (msg.channel === 'products_channel') {
+        broadcastDashboardStats();
+      } else if (msg.channel === 'invoices_channel') {
+        broadcastInvoiceUpdate();
+      }
     });
 
     listenClient.on('error', (err) => {

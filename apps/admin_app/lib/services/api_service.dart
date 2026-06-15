@@ -231,4 +231,37 @@ class ApiService {
       throw Exception(msg);
     }
   }
+
+  /// Get Technician Revenue Report
+  Future<Map<String, dynamic>> getTechnicianRevenueReport(Map<String, dynamic> queryParams) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/api/admin/reports/technician-revenue',
+        queryParameters: queryParams,
+      );
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to load technician revenue report';
+      throw Exception(msg);
+    }
+  }
+
+  /// Export Report to Excel
+  Future<Response> exportExcelReport(Map<String, dynamic> queryParams) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/api/admin/reports/export-excel',
+        queryParameters: queryParams,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to export Excel report';
+      throw Exception(msg);
+    }
+  }
 }

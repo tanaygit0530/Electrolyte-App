@@ -17,6 +17,14 @@ class InvoiceModel {
   final String? warrantyType;
   final String? preparedBy;
   final DateTime createdAt;
+  
+  // New Report Fields
+  final String mop;
+  final String zipCode;
+  final String remark;
+  final String? productDescription;
+  final String? partDescription;
+  final double? productItemPrice;
 
   InvoiceModel({
     required this.id,
@@ -37,6 +45,12 @@ class InvoiceModel {
     this.warrantyType,
     this.preparedBy,
     required this.createdAt,
+    this.mop = 'UPI',
+    this.zipCode = '400001',
+    this.remark = '',
+    this.productDescription,
+    this.partDescription,
+    this.productItemPrice,
   });
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +73,12 @@ class InvoiceModel {
       warrantyType: json['warrantyType'],
       preparedBy: json['preparedBy'],
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      mop: json['mop'] ?? 'UPI',
+      zipCode: json['zipCode'] ?? '400001',
+      remark: json['remark'] ?? '',
+      productDescription: json['productDescription'],
+      partDescription: json['partDescription'],
+      productItemPrice: double.tryParse(json['productItemPrice']?.toString() ?? ''),
     );
   }
 }
