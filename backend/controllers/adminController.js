@@ -2,6 +2,10 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/neondb');
 const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
 require('dotenv').config();
 
 // JWT Admin Login
@@ -632,189 +636,72 @@ const getTechnicianSummaryReport = async (req, res) => {
 // GET /api/admin/reports/export-excel
 const exportExcelReport = async (req, res) => {
   try {
-    // 1. Get all invoices matching filters except MOP (so Excel can filter dynamically)
-    const queryParams = { ...req.query };
-    delete queryParams.mops;
-    
-    const { query, params } = getFilteredInvoicesQuery(queryParams);
+    // 1. Get all invoices matching filters including MOP (for a filtered export)
+    const { query, params } = getFilteredInvoicesQuery(req.query);
     const result = await pool.query(query, params);
     const invoices = result.rows;
     
     // Find selected MOP from query
-    let selectedMop = '(All)';
+    let selectedMop = 'All';
     if (req.query.mops) {
-      const mopList = req.query.mops.split(',');
-      if (mopList.length === 1) {
-        selectedMop = mopList[0];
+      const mopList = req.query.mops.split(',').map(s => s.trim()).filter(Boolean);
+      if (mopList.length > 0) {
+        selectedMop = mopList.join(', ');
       }
     }
     
-    // Get unique MOPs for dropdown list
-    const uniqueMops = new Set();
-    uniqueMops.add('(All)');
-    invoices.forEach(inv => {
-      uniqueMops.add(inv.mop || '(blank)');
+    // Set up temp output folder and file path in local scratch directory
+    const tempDir = path.join(__dirname, '..', 'scratch');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const tempOutFile = path.join(tempDir, `temp_report_${Date.now()}.xlsx`);
+    
+    // Spawn Python script to populate excel template and refresh pivot table
+    const scriptPath = path.join(__dirname, '..', 'services', 'excel_generator.py');
+    const pythonCmd = fs.existsSync('/opt/anaconda3/bin/python3') ? '/opt/anaconda3/bin/python3' : 'python3';
+    const pythonProc = spawn(pythonCmd, [scriptPath, tempOutFile, selectedMop]);
+    
+    // Write invoices array as JSON to stdin
+    pythonProc.stdin.write(JSON.stringify(invoices));
+    pythonProc.stdin.end();
+    
+    let stderr = '';
+    pythonProc.stderr.on('data', (data) => {
+      stderr += data;
     });
-    const mopDropdownList = Array.from(uniqueMops);
     
-    // Get unique technicians from these invoices
-    const uniqueTechs = new Set();
-    invoices.forEach(inv => {
-      uniqueTechs.add(inv.technician_name || '(blank)');
-    });
-    const techList = Array.from(uniqueTechs);
-    
-    // Create Excel Workbook
-    const wb = XLSX.utils.book_new();
-    
-    // Tab 1: Summary Sheet (Pivot Table representation)
-    const summarySheetData = [];
-    summarySheetData.push(["MOP", selectedMop]); // Row 1
-    summarySheetData.push([]); // Row 2: blank
-    summarySheetData.push(["Row Labels", "Sum of Amount"]); // Row 3
-    
-    // Tab 2: Raw Invoice Data
-    const invoiceSheetData = [];
-    invoiceSheetData.push([
-      "Invoice Number", "Invoice Date", "Technician Name", "Customer Name", 
-      "Case Number", "Zip / Postal Code", "Product Description", "Part Description", 
-      "Product Item / ASP Price", "Remark", "MOP", "Amount"
-    ]);
-    
-    invoices.forEach(inv => {
-      const prodDesc = inv.brand || 'Atomberg';
-      let items = [];
+    pythonProc.on('close', async (code) => {
+      if (code !== 0) {
+        console.error('Python Pivot Generator Error (stderr):', stderr);
+        return res.status(500).json({ error: 'Excel generation failed', details: stderr });
+      }
+      
       try {
-        items = typeof inv.items === 'string' ? JSON.parse(inv.items) : (inv.items || []);
-      } catch(e) {}
-      const partDesc = items.map(i => i.description || i.name).join(', ');
-      const itemPrice = items.length > 0 ? (items.reduce((sum, i) => sum + (parseFloat(i.rate) || 0), 0) / items.length) : 0;
-      
-      invoiceSheetData.push([
-        inv.invoice_number,
-        new Date(inv.created_at).toLocaleDateString('en-IN'),
-        inv.technician_name || '',
-        inv.customer_name,
-        inv.case_id || '',
-        inv.zip_code || '400001',
-        prodDesc,
-        partDesc,
-        parseFloat(itemPrice.toFixed(2)),
-        inv.remark || '',
-        inv.mop || '',
-        parseFloat(inv.total_amount) || 0
-      ]);
-    });
-    
-    // Build Summary Sheet Cells with Formulas
-    const summaryWs = XLSX.utils.aoa_to_sheet(summarySheetData);
-    
-    // Set cell values & formulas for summary sheet
-    // B1: selected MOP
-    summaryWs['B1'] = {
-      v: selectedMop,
-      t: 's'
-    };
-    // Add dropdown validation list for B1
-    summaryWs['B1'].dataValidation = {
-      type: 'list',
-      allowBlank: true,
-      formula1: '"' + mopDropdownList.join(',') + '"'
-    };
-    
-    let currentRow = 4; // Excel row is 1-indexed. Row 3 is "Row Labels"
-    techList.forEach(tech => {
-      const cellRefA = 'A' + currentRow;
-      const cellRefB = 'B' + currentRow;
-      
-      summaryWs[cellRefA] = {
-        v: tech,
-        t: 's'
-      };
-      
-      // Calculate initial value for cell value 'v' based on selectedMop
-      let initialVal = 0;
-      invoices.forEach(inv => {
-        const invTech = inv.technician_name || '(blank)';
-        const invMop = inv.mop || '(blank)';
-        if (invTech === tech) {
-          if (selectedMop === '(All)' || invMop === selectedMop) {
-            initialVal += parseFloat(inv.total_amount) || 0;
-          }
-        }
-      });
-      
-      // Build formula pointing to InvoiceData sheet
-      // C:C is Technician Name (Col 3 in InvoiceData)
-      // K:K is MOP (Col 11 in InvoiceData)
-      // L:L is Amount (Col 12 in InvoiceData)
-      const formula = `IF(B$1="(All)", SUMIF(InvoiceData!C:C, IF(${cellRefA}="(blank)", "", ${cellRefA}), InvoiceData!L:L), IF(B$1="(blank)", SUMIFS(InvoiceData!L:L, InvoiceData!C:C, IF(${cellRefA}="(blank)", "", ${cellRefA}), InvoiceData!K:K, ""), SUMIFS(InvoiceData!L:L, InvoiceData!C:C, IF(${cellRefA}="(blank)", "", ${cellRefA}), InvoiceData!K:K, B$1)))`;
-      
-      summaryWs[cellRefB] = {
-        t: 'n',
-        f: formula,
-        v: parseFloat(initialVal.toFixed(2))
-      };
-      
-      currentRow++;
-    });
-    
-    // Grand Total Row
-    const grandTotalCellA = 'A' + currentRow;
-    const grandTotalCellB = 'B' + currentRow;
-    summaryWs[grandTotalCellA] = {
-      v: "Grand Total",
-      t: 's'
-    };
-    
-    let totalInitialVal = 0;
-    invoices.forEach(inv => {
-      const invMop = inv.mop || '(blank)';
-      if (selectedMop === '(All)' || invMop === selectedMop) {
-        totalInitialVal += parseFloat(inv.total_amount) || 0;
+        // Read file contents, send as response, and clean up
+        const buf = fs.readFileSync(tempOutFile);
+        
+        // Export file name formatting: OW_Report_DD-MM-YYYY.xlsx
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        const formattedDate = `${dd}-${mm}-${yyyy}`;
+        const filename = `OW_Report_${formattedDate}.xlsx`;
+        
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buf);
+        
+        // Delete temp file asynchronously
+        fs.unlink(tempOutFile, (err) => {
+          if (err) console.error('Error deleting temp Excel file:', err);
+        });
+      } catch (err) {
+        console.error('Error reading generated Excel:', err);
+        res.status(500).json({ error: 'Internal Server Error reading export' });
       }
     });
-    
-    summaryWs[grandTotalCellB] = {
-      t: 'n',
-      f: `SUM(B4:B${currentRow-1})`,
-      v: parseFloat(totalInitialVal.toFixed(2))
-    };
-    
-    // Format column widths for summary sheet
-    summaryWs['!cols'] = [
-      { wch: 20 }, // Row Labels
-      { wch: 15 }  // Sum of Amount
-    ];
-    
-    // Ensure ref ranges are updated
-    summaryWs['!ref'] = `A1:B${currentRow}`;
-    
-    // Build Tab 2 (Raw Data)
-    const invoiceWs = XLSX.utils.aoa_to_sheet(invoiceSheetData);
-    invoiceWs['!cols'] = [
-      { wch: 18 }, // Invoice Number
-      { wch: 12 }, // Date
-      { wch: 20 }, // Technician Name
-      { wch: 20 }, // Customer Name
-      { wch: 15 }, // Case Number
-      { wch: 12 }, // Zip / Postal Code
-      { wch: 18 }, // Product Description
-      { wch: 40 }, // Part Description
-      { wch: 12 }, // Product Item / ASP Price
-      { wch: 20 }, // Remark
-      { wch: 12 }, // MOP
-      { wch: 12 }  // Amount
-    ];
-    
-    XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
-    XLSX.utils.book_append_sheet(wb, invoiceWs, "InvoiceData");
-    
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    
-    res.setHeader('Content-Disposition', 'attachment; filename="technician_revenue_report.xlsx"');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buf);
   } catch (error) {
     console.error('Export Excel Error:', error);
     res.status(500).json({ error: 'Internal Server Error' });

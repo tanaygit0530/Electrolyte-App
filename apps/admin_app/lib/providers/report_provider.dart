@@ -209,9 +209,15 @@ class ReportProvider extends ChangeNotifier {
         return false;
       }
       
+      final now = DateTime.now();
+      final dd = now.day.toString().padLeft(2, '0');
+      final mm = now.month.toString().padLeft(2, '0');
+      final yyyy = now.year.toString();
+      final defaultFileName = 'OW_Report_$dd-$mm-$yyyy.xlsx';
+
       String? outputFile = await FilePicker.platform.saveFile(
         dialogTitle: 'Save Revenue Report',
-        fileName: 'technician_revenue_report.xlsx',
+        fileName: defaultFileName,
         type: FileType.custom,
         allowedExtensions: ['xlsx'],
       );
