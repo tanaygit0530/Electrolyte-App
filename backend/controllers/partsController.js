@@ -50,8 +50,20 @@ exports.searchParts = async (req, res) => {
   try {
     const queryStr = `%${q}%`;
     const result = await pool.query(
-      'SELECT * FROM products WHERE product_name ILIKE $1 OR product_code ILIKE $1 OR description ILIKE $1 LIMIT 5',
-      [queryStr]
+      `SELECT * FROM products 
+       WHERE word_similarity($1, product_name) > 0.3 
+          OR word_similarity($1, product_code) > 0.3 
+          OR word_similarity($1, description) > 0.3 
+          OR product_name ILIKE $2 
+          OR product_code ILIKE $2 
+          OR description ILIKE $2 
+       ORDER BY GREATEST(
+         word_similarity($1, product_name),
+         word_similarity($1, product_code),
+         word_similarity($1, description)
+       ) DESC 
+       LIMIT 5`,
+      [q, queryStr]
     );
 
     const formattedData = result.rows.map(formatComponent);

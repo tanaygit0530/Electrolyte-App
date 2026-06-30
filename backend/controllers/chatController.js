@@ -115,12 +115,20 @@ exports.processChat = async (req, res) => {
         location
       FROM products
       WHERE
-           product_name ILIKE $1
-        OR product_code ILIKE $1
-        OR description ILIKE $1
+           word_similarity($1, product_name) > 0.3
+        OR word_similarity($1, product_code) > 0.3
+        OR word_similarity($1, description) > 0.3
+        OR product_name ILIKE $2
+        OR product_code ILIKE $2
+        OR description ILIKE $2
+      ORDER BY GREATEST(
+        word_similarity($1, product_name),
+        word_similarity($1, product_code),
+        word_similarity($1, description)
+      ) DESC
       LIMIT 20
       `,
-      [queryStr]
+      [userMessage, queryStr]
     );
 
     console.timeEnd('productSearch');
