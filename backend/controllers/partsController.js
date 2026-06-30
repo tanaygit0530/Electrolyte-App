@@ -8,6 +8,7 @@ const formatComponent = (prod) => ({
   model: prod.description || 'N/A',
   price: parseFloat(prod.product_price) || 0,
   stock_quantity: prod.stock_quantity !== undefined ? prod.stock_quantity : 0,
+  location: prod.location ?? 'N/A',
   status: prod.stock_quantity > 0 ? 'Available' : 'Out of Stock'
 });
 

@@ -8,6 +8,7 @@ const formatComponent = (prod) => ({
   model: prod.description || 'N/A',
   price: parseFloat(prod.product_price) || 0,
   stock_quantity: prod.stock_quantity ?? 0,
+  location: prod.location ?? 'N/A',
   status: prod.stock_quantity > 0 ? 'Available' : 'Out of Stock'
 });
 
@@ -110,7 +111,8 @@ exports.processChat = async (req, res) => {
         product_code,
         description,
         product_price,
-        stock_quantity
+        stock_quantity,
+        location
       FROM products
       WHERE
            product_name ILIKE $1

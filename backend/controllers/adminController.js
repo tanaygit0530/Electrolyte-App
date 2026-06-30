@@ -76,7 +76,7 @@ const uploadStock = async (req, res) => {
 
     // 1. Validate rows in memory
     for (const row of rows) {
-      const { productCode, stockQuantity } = row;
+      const { productCode, stockQuantity, location } = row;
 
       if (!productCode) {
         failedRows++;
@@ -106,7 +106,11 @@ const uploadStock = async (req, res) => {
       }
       seenCodes.add(code);
 
-      validRows.push({ productCode: code, qty });
+      validRows.push({ 
+        productCode: code, 
+        qty, 
+        location: location ? String(location).trim() : 'N/A' 
+      });
     }
 
     // 2. Execute single highly-optimized bulk upsert query
@@ -116,19 +120,20 @@ const uploadStock = async (req, res) => {
       let paramIndex = 1;
 
       for (const r of validRows) {
-        valuePairs.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, 0.00)`);
-        queryParams.push(r.productCode, r.productCode, r.qty);
-        paramIndex += 3;
+        valuePairs.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, 0.00, $${paramIndex + 3})`);
+        queryParams.push(r.productCode, r.productCode, r.qty, r.location);
+        paramIndex += 4;
       }
 
-      // If product doesn't exist, insert it with price 0.00. 
-      // If it exists, only update stock_quantity (preserving the existing price).
+      // If product doesn't exist, insert it with price 0.00 and location. 
+      // If it exists, update stock_quantity and location (preserving the existing price).
       const bulkUpsertQuery = `
-        INSERT INTO products (product_code, product_name, stock_quantity, product_price)
+        INSERT INTO products (product_code, product_name, stock_quantity, product_price, location)
         VALUES ${valuePairs.join(', ')}
         ON CONFLICT (product_code)
         DO UPDATE SET 
           stock_quantity = EXCLUDED.stock_quantity,
+          location = EXCLUDED.location,
           updated_at = CURRENT_TIMESTAMP;
       `;
 

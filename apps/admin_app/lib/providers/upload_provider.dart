@@ -189,6 +189,7 @@ class UploadProvider extends ChangeNotifier {
       // 1. Detect headers or use fallback indices
       int codeColIndex = 4; // Fallback
       int qtyColIndex = 6;  // Fallback
+      int locationColIndex = 1; // Fallback
       
       final firstRow = rowsData[0];
       for (int i = 0; i < firstRow.length; i++) {
@@ -197,6 +198,8 @@ class UploadProvider extends ChangeNotifier {
           codeColIndex = i;
         } else if (cellVal.contains('quantity on hand') || cellVal == 'qty' || cellVal == 'quantity' || cellVal.contains('quantityonhand')) {
           qtyColIndex = i;
+        } else if (cellVal.contains('location name') || cellVal == 'location' || cellVal == 'location_name') {
+          locationColIndex = i;
         }
       }
 
@@ -214,6 +217,7 @@ class UploadProvider extends ChangeNotifier {
 
         final rawCode = row.length > codeColIndex ? row[codeColIndex].value : null;
         final rawQty = row.length > qtyColIndex ? row[qtyColIndex].value : null;
+        final rawLocation = row.length > locationColIndex ? row[locationColIndex].value : null;
 
         final codeErr = ExcelValidators.validateProductCode(rawCode);
         final code = rawCode?.toString().trim() ?? '';
@@ -278,6 +282,7 @@ class UploadProvider extends ChangeNotifier {
           _validRowsPayload.add({
             'productCode': code,
             'stockQuantity': parsedQty,
+            'location': rawLocation?.toString().trim() ?? 'N/A',
           });
           _previewRows.add(PreviewRow(
             rowNumber: r + 1,

@@ -232,9 +232,9 @@ class _ChatBubble extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                "₹${comp['price']?.toString() ?? '0'}",
+                                "Qty: ${comp['stock_quantity']?.toString() ?? '0'} | Loc: ${comp['location'] ?? 'N/A'}",
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFFFFC107),
                                 ),

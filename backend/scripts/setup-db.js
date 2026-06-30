@@ -20,6 +20,7 @@ const setup = async () => {
         description TEXT,
         stock_quantity INTEGER NOT NULL DEFAULT 0,
         product_price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+        location VARCHAR(255) DEFAULT 'N/A',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -158,6 +159,9 @@ const setup = async () => {
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS remark TEXT DEFAULT '';
     `);
     await pool.query(`
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(255) DEFAULT 'N/A';
+    `);
+    await pool.query(`
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS mop VARCHAR(50) DEFAULT 'UPI';
     `);
 
@@ -267,18 +271,18 @@ const setup = async () => {
 
     // 4. Seed initial products if not exists
     const dummyProducts = [
-      { code: 'EA01701', name: 'Main PCB Controller Board', desc: 'Central microprocessor motherboard for electrical inventory systems', stock: 12, price: 1500.00 },
-      { code: 'EA08001', name: 'Universal Power Supply Unit Module', desc: 'AC/DC regulator power board 12V/24V compatible', stock: 5, price: 850.50 },
-      { code: 'EA03402', name: 'High Speed Cooling Fan', desc: 'Brushless dual bearing cooling system 120mm', stock: 25, price: 299.00 },
-      { code: 'EA09901', name: 'Alphanumeric LCD Display Panel', desc: 'Interface panel screen 16x2 backlight display', stock: 0, price: 420.00 }
+      { code: 'EA01701', name: 'Main PCB Controller Board', desc: 'Central microprocessor motherboard for electrical inventory systems', stock: 12, price: 1500.00, location: 'Main Warehouse' },
+      { code: 'EA08001', name: 'Universal Power Supply Unit Module', desc: 'AC/DC regulator power board 12V/24V compatible', stock: 5, price: 850.50, location: 'Shelf A-12' },
+      { code: 'EA03402', name: 'High Speed Cooling Fan', desc: 'Brushless dual bearing cooling system 120mm', stock: 25, price: 299.00, location: 'Van 3' },
+      { code: 'EA09901', name: 'Alphanumeric LCD Display Panel', desc: 'Interface panel screen 16x2 backlight display', stock: 0, price: 420.00, location: 'N/A' }
     ];
 
     for (const prod of dummyProducts) {
       const checkProd = await pool.query('SELECT * FROM products WHERE product_code = $1', [prod.code]);
       if (checkProd.rows.length === 0) {
         await pool.query(
-          'INSERT INTO products (product_code, product_name, description, stock_quantity, product_price) VALUES ($1, $2, $3, $4, $5)',
-          [prod.code, prod.name, prod.desc, prod.stock, prod.price]
+          'INSERT INTO products (product_code, product_name, description, stock_quantity, product_price, location) VALUES ($1, $2, $3, $4, $5, $6)',
+          [prod.code, prod.name, prod.desc, prod.stock, prod.price, prod.location]
         );
         console.log(`- Seeded product: ${prod.code} (${prod.name})`);
       }
