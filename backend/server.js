@@ -36,7 +36,7 @@ app.use('/api/admin', adminRoutes);
 
 const path = require('path');
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.send('<h1>Electrolyte App Backend is running successfully!</h1>');
 });
 
 // Global JSON Error Handler
