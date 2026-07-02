@@ -5,7 +5,6 @@ set -o errexit
 # Install project dependencies
 npm install
 
-# Explicitly download Chrome browser for Puppeteer to run in Render's environment
-# We use the same cache directory that Render supports and persists
-export PUPPETEER_CACHE_DIR=/opt/render/.cache/puppeteer
+# Explicitly download Chrome browser inside the project directory so it is copied to the runtime container
+export PUPPETEER_CACHE_DIR=$(pwd)/.cache/puppeteer
 npx puppeteer browsers install chrome
