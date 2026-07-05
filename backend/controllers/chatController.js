@@ -114,13 +114,15 @@ exports.processChat = async (req, res) => {
         stock_quantity,
         location
       FROM products
-      WHERE
+      WHERE (
            word_similarity($1, product_name) > 0.3
         OR word_similarity($1, product_code) > 0.3
         OR word_similarity($1, description) > 0.3
         OR product_name ILIKE $2
         OR product_code ILIKE $2
         OR description ILIKE $2
+      )
+      AND stock_quantity > 0
       ORDER BY GREATEST(
         word_similarity($1, product_name),
         word_similarity($1, product_code),

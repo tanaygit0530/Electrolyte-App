@@ -193,12 +193,14 @@ class _ChatBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (components != null && components!.isNotEmpty)
+          if (components != null && components!.any((comp) => (comp['stock_quantity'] ?? 0) > 0))
             Container(
               margin: const EdgeInsets.only(top: 4, bottom: 8),
               width: MediaQuery.of(context).size.width * 0.85,
               child: Column(
-                children: components!.map<Widget>((comp) {
+                children: components!
+                    .where((comp) => (comp['stock_quantity'] ?? 0) > 0)
+                    .map<Widget>((comp) {
                   return Card(
                     color: isDark ? const Color(0xFF2B3A55) : Colors.white,
                     margin: const EdgeInsets.symmetric(vertical: 4),
@@ -211,40 +213,26 @@ class _ChatBubble extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            comp['part_name'] ?? 'Unknown Part',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Code: ${comp['part_code'] ?? 'N/A'} | Model: ${comp['model'] ?? 'N/A'}",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "Qty: ${comp['stock_quantity']?.toString() ?? '0'} | Loc: ${comp['location'] ?? 'N/A'}",
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFFFC107),
+                              Expanded(
+                                child: Text(
+                                  comp['part_name'] ?? 'Unknown Part',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: comp['status'] == 'Available' 
-                                      ? Colors.green.withOpacity(0.2) 
-                                      : Colors.red.withOpacity(0.2),
+                                      ? Colors.green.withValues(alpha: 0.2) 
+                                      : Colors.red.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -259,6 +247,23 @@ class _ChatBubble extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "Code: ${comp['part_code'] ?? 'N/A'} | Model: ${comp['model'] ?? 'N/A'}",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Qty: ${comp['stock_quantity']?.toString() ?? '0'} | Loc: ${comp['location'] ?? 'N/A'}",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFFC107),
+                            ),
                           ),
                         ],
                       ),

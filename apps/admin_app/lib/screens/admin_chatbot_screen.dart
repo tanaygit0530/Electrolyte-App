@@ -238,7 +238,9 @@ class _AdminChatbotScreenState extends State<AdminChatbotScreen> {
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.5,
+              maxWidth: MediaQuery.of(context).size.width > 600
+                  ? MediaQuery.of(context).size.width * 0.5
+                  : MediaQuery.of(context).size.width * 0.85,
             ),
             decoration: BoxDecoration(
               color: isBot ? AdminTheme.darkSurface : AdminTheme.primaryYellow,
@@ -279,12 +281,20 @@ class _AdminChatbotScreenState extends State<AdminChatbotScreen> {
   }
 
   Widget _buildSparePartComponentList(List<dynamic> components) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth > 600 ? screenWidth * 0.5 : screenWidth * 0.85;
+
+    final visibleComponents = components
+        .where((comp) => (comp['stock_quantity'] ?? 0) > 0)
+        .toList();
+    if (visibleComponents.isEmpty) return const SizedBox.shrink();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24, left: 12),
-      width: MediaQuery.of(context).size.width * 0.5,
+      width: cardWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: components.map((comp) {
+        children: visibleComponents.map((comp) {
           final isAvailable = comp['status'] == 'Available';
           final statusColor = isAvailable ? AdminTheme.accentEmerald : AdminTheme.errorColor;
 
@@ -341,8 +351,11 @@ class _AdminChatbotScreenState extends State<AdminChatbotScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Text(
                         "Rate: ₹${comp['price']?.toString() ?? '0.00'}",
