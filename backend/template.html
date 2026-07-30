@@ -33,7 +33,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.05;
+      opacity: 0.025;
       width: 450px;
       height: auto;
       pointer-events: none;
@@ -143,6 +143,7 @@
     table.items-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       border: none;
     }
 
@@ -165,6 +166,11 @@
     table.items-table td:first-child {
       text-align: center;
       width: 45px;
+    }
+
+    table.items-table th:last-child,
+    table.items-table td:last-child {
+      border-right: none;
     }
 
     /* Table alignments for 7-column layout */
@@ -203,6 +209,16 @@
       font-weight: bold;
       background: #fafafa;
       font-size: 11px !important;
+    }
+
+    /* Prevent rightmost table borders from overlapping with outer page frame */
+    table.items-table th:last-child,
+    table.items-table td:last-child,
+    table.tax-table th:last-child,
+    table.tax-table td:last-child,
+    tr.summary-row td:last-child,
+    tr.grand-total-row td:last-child {
+      border-right: none !important;
     }
 
     /* TOTALS BOX (Atomberg style) */
@@ -244,6 +260,7 @@
     table.tax-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       border: none;
     }
 
@@ -254,6 +271,11 @@
       padding: 5px 8px;
       font-size: 10px;
       vertical-align: middle;
+    }
+
+    table.tax-table th:last-child,
+    table.tax-table td:last-child {
+      border-right: none !important;
     }
 
     table.tax-table th {
@@ -458,7 +480,7 @@
     <div class="bottom-notes">
       <p class="payable-note">{{payableNote}}</p>
       <p class="warranty-note">{{warrantyNote}}</p>
-      <p>This is a computer-generated invoice. No signature required.</p>
+      <p>This is a computer-generated tax invoice issued by M/s Electrolyte Solutions.</p>
       <p><b>Subjected to Navi Mumbai Jurisdiction.</b></p>
     </div>
 

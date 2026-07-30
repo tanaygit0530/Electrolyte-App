@@ -41,16 +41,24 @@ const numberToWords = (num) => {
   const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
+  function fmtTens(t, o) {
+    const tensVal = Number(t);
+    const onesVal = Number(o);
+    if (tensVal === 0 && onesVal === 0) return '';
+    if (tensVal < 2) return a[tensVal * 10 + onesVal];
+    return b[tensVal] + (onesVal > 0 ? '-' + a[onesVal].trim() : '') + ' ';
+  }
+
   function n2w(n) {
     if ((n = n.toString()).length > 9) return 'overflow';
     let n_arr = ('000000000' + n).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
     if (!n_arr) return '';
     let str = '';
-    str += (n_arr[1] != 0) ? (a[Number(n_arr[1])] || b[n_arr[1][0]] + ' ' + a[n_arr[1][1]]) + 'Crore ' : '';
-    str += (n_arr[2] != 0) ? (a[Number(n_arr[2])] || b[n_arr[2][0]] + ' ' + a[n_arr[2][1]]) + 'Lakh ' : '';
-    str += (n_arr[3] != 0) ? (a[Number(n_arr[3])] || b[n_arr[3][0]] + ' ' + a[n_arr[3][1]]) + 'Thousand ' : '';
-    str += (n_arr[4] != 0) ? (a[Number(n_arr[4])] || b[n_arr[4][0]] + ' ' + a[n_arr[4][1]]) + 'Hundred ' : '';
-    str += (n_arr[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n_arr[5])] || b[n_arr[5][0]] + ' ' + a[n_arr[5][1]]) : '';
+    str += (n_arr[1] != 0) ? fmtTens(n_arr[1][0], n_arr[1][1]) + 'Crore ' : '';
+    str += (n_arr[2] != 0) ? fmtTens(n_arr[2][0], n_arr[2][1]) + 'Lakh ' : '';
+    str += (n_arr[3] != 0) ? fmtTens(n_arr[3][0], n_arr[3][1]) + 'Thousand ' : '';
+    str += (n_arr[4] != 0) ? (a[Number(n_arr[4])] || b[n_arr[4][0]] + (n_arr[4][1] > 0 ? '-' + a[n_arr[4][1]].trim() : '')) + 'Hundred ' : '';
+    str += (n_arr[5] != 0) ? ((str != '') ? 'and ' : '') + fmtTens(n_arr[5][0], n_arr[5][1]) : '';
     return str.trim();
   }
 
@@ -89,7 +97,9 @@ const buildTaxTable = (invoiceData) => {
   const gstAmount = parseFloat(invoiceData.gstAmount || 0);
   if (gstAmount <= 0) return '';
 
-  const taxableAmt = parseFloat(invoiceData.subTotal || 0);
+  const subTotal = parseFloat(invoiceData.subTotal || 0);
+  const serviceCharge = parseFloat(invoiceData.serviceCharge || 0);
+  const taxableAmt = subTotal + serviceCharge;
   const cgstAmt = gstAmount / 2;
   const sgstAmt = gstAmount / 2;
 
@@ -130,12 +140,19 @@ const buildBillingTable = (invoiceData, isSymphony) => {
     const rate = parseFloat(item.rate || 0);
     const amount = qty * rate;
 
+    // Filter out internal inventory status prefixes (e.g. "Deactivated - ", "Deactive - ")
+    const rawDesc = item.description || item.name || '';
+    const cleanDesc = rawDesc.replace(/^(Deactivated\s*-\s*|Deactive\s*-\s*)/i, '');
+
+    // Format quantity cleanly (1 instead of 1.000 for discrete units)
+    const formattedQty = Number.isInteger(qty) ? qty.toString() : qty.toFixed(2);
+
     rowsHtml += `
       <tr>
         <td style="text-align: center;">${index + 1}</td>
-        <td style="text-align: left;">${item.description || item.name}</td>
+        <td style="text-align: left;">${cleanDesc}</td>
         <td style="text-align: center;">${hsnCode}</td>
-        <td style="text-align: center;">${qty.toFixed(3)}</td>
+        <td style="text-align: center;">${formattedQty}</td>
         <td style="text-align: center;">${unitName}</td>
         <td style="text-align: right;">₹${rate.toFixed(2)}</td>
         <td style="text-align: right;">₹${amount.toFixed(2)}</td>
@@ -153,16 +170,12 @@ const buildBillingTable = (invoiceData, isSymphony) => {
 
   // Total Quantity
   const totalQty = items.reduce((sum, item) => sum + parseFloat(item.quantity || item.qty || 0), 0);
+  const formattedTotalQty = Number.isInteger(totalQty) ? totalQty.toString() : totalQty.toFixed(2);
 
   // Subtotal row
   rowsHtml += `
     <tr class="summary-row">
-      <td>&nbsp;</td>
-      <td style="text-align: left;"><b>Subtotal</b></td>
-      <td>&nbsp;</td>
-      <td>&nbsp;</td>
-      <td>&nbsp;</td>
-      <td>&nbsp;</td>
+      <td colspan="6" style="text-align: right; font-weight: bold; padding-right: 12px;">Subtotal</td>
       <td style="text-align: right;">₹${subTotal.toFixed(2)}</td>
     </tr>
   `;
@@ -171,12 +184,7 @@ const buildBillingTable = (invoiceData, isSymphony) => {
   if (serviceCharge > 0) {
     rowsHtml += `
       <tr class="summary-row">
-        <td>&nbsp;</td>
-        <td style="text-align: left;">Add : Service Charge</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
+        <td colspan="6" style="text-align: right; padding-right: 12px;">Add : Service Charge</td>
         <td style="text-align: right;">₹${serviceCharge.toFixed(2)}</td>
       </tr>
     `;
@@ -188,21 +196,11 @@ const buildBillingTable = (invoiceData, isSymphony) => {
     const sgstVal = gstAmount / 2;
     rowsHtml += `
       <tr class="summary-row">
-        <td>&nbsp;</td>
-        <td style="text-align: left;">Add : CGST @ 9.00%</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
+        <td colspan="6" style="text-align: right; padding-right: 12px;">Add : CGST @ 9.00%</td>
         <td style="text-align: right;">₹${cgstVal.toFixed(2)}</td>
       </tr>
       <tr class="summary-row">
-        <td>&nbsp;</td>
-        <td style="text-align: left;">Add : SGST @ 9.00%</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
+        <td colspan="6" style="text-align: right; padding-right: 12px;">Add : SGST @ 9.00%</td>
         <td style="text-align: right;">₹${sgstVal.toFixed(2)}</td>
       </tr>
     `;
@@ -213,12 +211,7 @@ const buildBillingTable = (invoiceData, isSymphony) => {
     const roundedText = roundedOff < 0 ? 'Less : Rounded Off (-)' : 'Add : Rounded Off (+)';
     rowsHtml += `
       <tr class="summary-row">
-        <td>&nbsp;</td>
-        <td style="text-align: left;">${roundedText}</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
+        <td colspan="6" style="text-align: right; padding-right: 12px;">${roundedText}</td>
         <td style="text-align: right;">₹${Math.abs(roundedOff).toFixed(2)}</td>
       </tr>
     `;
@@ -227,12 +220,12 @@ const buildBillingTable = (invoiceData, isSymphony) => {
   // Grand Total row
   rowsHtml += `
     <tr class="grand-total-row">
-      <td>&nbsp;</td>
+      <td style="text-align: center;">&nbsp;</td>
       <td style="text-align: left;"><b>Grand Total</b></td>
-      <td>&nbsp;</td>
-      <td style="text-align: center;"><b>${totalQty.toFixed(3)}</b></td>
+      <td style="text-align: center;">&nbsp;</td>
+      <td style="text-align: center;"><b>${formattedTotalQty}</b></td>
       <td style="text-align: center;"><b>${unitName}</b></td>
-      <td>&nbsp;</td>
+      <td style="text-align: center;">&nbsp;</td>
       <td style="text-align: right;"><b>₹${roundedTotal.toFixed(2)}</b></td>
     </tr>
   `;
@@ -241,13 +234,13 @@ const buildBillingTable = (invoiceData, isSymphony) => {
     <table class="items-table">
       <thead>
         <tr>
-          <th style="width: 5%; text-align: center;">S.N.</th>
-          <th style="width: 45%; text-align: left;">Description of Goods</th>
+          <th style="width: 6%; text-align: center;">S.N.</th>
+          <th style="width: 40%; text-align: left;">Description of Goods</th>
           <th style="width: 10%; text-align: center;">HSN/SAC</th>
-          <th style="width: 10%; text-align: center;">Qty.</th>
+          <th style="width: 8%; text-align: center;">Qty.</th>
           <th style="width: 8%; text-align: center;">Unit</th>
-          <th style="width: 10%; text-align: right;">Price</th>
-          <th style="width: 12%; text-align: right;">Amount</th>
+          <th style="width: 12%; text-align: right;">Price</th>
+          <th style="width: 16%; text-align: right;">Amount</th>
         </tr>
       </thead>
       <tbody>
@@ -336,7 +329,7 @@ const generatePDF = async (invoiceData) => {
       <p>Bank Name: Axis Bank Ltd.</p>
       <p>Account No.: 921000031635999</p>
       <p>IFSC Code: UTIB0001622</p>
-      <p>Branch: Mulund(E)</p>
+      <p>Branch: Mulund (E)</p>
     `;
 
     const roundedTotal = Math.round(parseFloat(invoiceData.totalAmount || 0));
@@ -347,7 +340,7 @@ const generatePDF = async (invoiceData) => {
     let totalsBlock = '';
     let wordsText = `<b>IN WORDS:</b> ${rawWordsText.toUpperCase()}`;
     let payableNote = 'Make all cheque or bank transfers payable to: M/s Electrolyte Solutions.';
-    let warrantyNote = 'Note: Spare/Products are warranted for a period of 1 year from the date of handing over to the customer.';
+    let warrantyNote = 'Note: Spare/products are warranted for a period of 1 year from the date of handing over to the customer.';
 
     if (isSymphony) {
       partnerSubtitle = 'Authorised Service Partner of Symphony Limited.';
@@ -357,15 +350,15 @@ const generatePDF = async (invoiceData) => {
       gstinLine = '<p>GSTIN: 27AJYPY7934L1ZS</p>';
 
       bankDetailsContent = `
-      <p>A/c Name: M/s Electrolyte Solutions</p>
-        <p>Bank Name : Axis Bank Ltd.</p>
-        <p>Account No. : 921020033685999</p>
-        <p>IFSC Code : UTIB0001622</p>
-        <p>Branch : Mulund(E)</p>
+        <p>A/c Name: M/s Electrolyte Solutions</p>
+        <p>Bank Name: Axis Bank Ltd.</p>
+        <p>Account No.: 921020033685999</p>
+        <p>IFSC Code: UTIB0001622</p>
+        <p>Branch: Mulund (E)</p>
       `;
 
-      payableNote = 'Make all Cheque or bank transfer payable to Name : M/s Electrolyte Solutions.';
-      warrantyNote = 'Note:- Spare/Products Are Warranted for a period of 10 Days From the Date of Handing Over of the Spare/Products to the Customer.';
+      payableNote = 'Make all cheque or bank transfers payable to: M/s Electrolyte Solutions.';
+      warrantyNote = 'Note: Spare/products are warranted for a period of 10 days from the date of handing over to the customer.';
 
     } else {
       // Default / Atomberg layout

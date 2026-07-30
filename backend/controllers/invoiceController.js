@@ -56,9 +56,10 @@ const createInvoice = async (req, res) => {
     }));
 
     const subTotal = items.reduce((sum, item) => sum + item.amount, 0);
-    const gstAmount = gstEnabled ? (subTotal * 0.18) : 0;
     const sCharge = parseFloat(serviceCharge) || 0;
-    const totalAmount = subTotal + gstAmount + sCharge;
+    const taxableBase = subTotal + sCharge;
+    const gstAmount = gstEnabled ? (taxableBase * 0.18) : 0;
+    const totalAmount = taxableBase + gstAmount;
 
     // Generate invoice number ES/26-27/OWXXXX
     console.time('Database Insert & Invoice Number Generation');
