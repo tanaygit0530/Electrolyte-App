@@ -37,7 +37,7 @@ class SharedApiService {
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('customer_token');
+      final token = prefs.getString('customer_token') ?? prefs.getString('admin_token');
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }

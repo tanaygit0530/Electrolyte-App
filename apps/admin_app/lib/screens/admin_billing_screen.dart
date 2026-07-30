@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_core/shared_core.dart';
 import '../utils/theme.dart';
@@ -13,8 +14,10 @@ class AdminBillingScreen extends StatefulWidget {
 class _AdminBillingScreenState extends State<AdminBillingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _apiService = SharedApiService();
+  Timer? _debounce;
   String _warrantyType = 'Out of Warranty (OW)';
   String _brand = 'Select Brand';
+  String _paymentMode = 'UPI';
 
   List<SparePart> _searchResults = [];
   final List<SparePart> _selectedParts = [];
@@ -32,6 +35,7 @@ class _AdminBillingScreenState extends State<AdminBillingScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _customerNameController.dispose();
     _customerEmailController.dispose();
@@ -122,6 +126,16 @@ class _AdminBillingScreenState extends State<AdminBillingScreen> {
                           const SizedBox(height: 16),
 
                           _buildTextField("Support Case ID", Icons.confirmation_number_rounded, "Enter case ID", controller: _caseIdController, validator: (v) => v!.isEmpty ? 'Case ID is required' : null),
+                          const SizedBox(height: 16),
+
+                          _buildDropdownField(
+                            "Payment Mode (MOP)",
+                            _paymentMode,
+                            ['UPI', 'Cash'],
+                            (val) {
+                              setState(() => _paymentMode = val!);
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -469,22 +483,28 @@ class _AdminBillingScreenState extends State<AdminBillingScreen> {
           focusedBorder: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        onChanged: (value) async {
-          if (value.length > 2) {
-            setState(() => _isSearching = true);
-            try {
-              final results = await _apiService.searchParts(value);
-              setState(() {
-                _searchResults = results;
-              });
-            } catch (_) {
-              setState(() => _searchResults = []);
-            } finally {
-              setState(() => _isSearching = false);
+        onChanged: (value) {
+          if (_debounce?.isActive ?? false) _debounce!.cancel();
+          _debounce = Timer(const Duration(milliseconds: 300), () async {
+            final trimmed = value.trim();
+            if (trimmed.isNotEmpty) {
+              if (mounted) setState(() => _isSearching = true);
+              try {
+                final results = await _apiService.searchParts(trimmed);
+                if (mounted) {
+                  setState(() {
+                    _searchResults = results;
+                  });
+                }
+              } catch (_) {
+                if (mounted) setState(() => _searchResults = []);
+              } finally {
+                if (mounted) setState(() => _isSearching = false);
+              }
+            } else {
+              if (mounted) setState(() => _searchResults = []);
             }
-          } else {
-            setState(() => _searchResults = []);
-          }
+          });
         },
       ),
     );
@@ -523,6 +543,7 @@ class _AdminBillingScreenState extends State<AdminBillingScreen> {
         "customerEmail": _customerEmailController.text,
         "warrantyType": _warrantyType == 'Out of Warranty (OW)' ? 'OW' : 'IW',
         "brand": _brand,
+        "mop": _paymentMode,
         "products": _selectedParts.map((p) => {
           "name": p.partName,
           "qty": 1,

@@ -19,6 +19,7 @@ class _BillingScreenState extends State<BillingScreen> {
   final _apiService = ApiService();
   String _warrantyType = 'Out of Warranty (OW)';
   String _brand = 'Select Brand';
+  String _paymentMode = 'UPI';
 
   List<SparePart> _searchResults = [];
   final List<SparePart> _selectedParts = [];
@@ -199,6 +200,14 @@ class _BillingScreenState extends State<BillingScreen> {
                 Icons.confirmation_number_outlined,
                 "Enter case ID",
                 controller: _caseIdController,
+              ),
+              _buildDropdownField(
+                "Payment Mode (MOP)",
+                _paymentMode,
+                ['UPI', 'Cash'],
+                (val) {
+                  setState(() => _paymentMode = val!);
+                },
               ),
               _buildTextField(
                 "Service Charge",
@@ -384,6 +393,7 @@ class _BillingScreenState extends State<BillingScreen> {
         "customerEmail": _customerEmailController.text,
         "warrantyType": _warrantyType == 'Out of Warranty (OW)' ? 'OW' : 'IW',
         "brand": _brand,
+        "mop": _paymentMode,
         "products": _selectedParts.map((p) => {
           "name": p.partName,
           "qty": 1,

@@ -65,7 +65,18 @@ class ApiService {
         rethrow;
       }
     }
-    return Map<String, dynamic>.from(data);
+    if (data is List<int>) {
+      try {
+        final decodedString = utf8.decode(data);
+        return json.decode(decodedString) as Map<String, dynamic>;
+      } catch (_) {
+        return {'error': 'Binary data received instead of JSON.'};
+      }
+    }
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return {};
   }
 
   /// Defensive parser to safely handle both pre-parsed Lists and raw JSON Strings

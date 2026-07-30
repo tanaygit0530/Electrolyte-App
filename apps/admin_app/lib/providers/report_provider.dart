@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/api_service.dart';
+import '../utils/file_saver.dart';
 
 class TechnicianPivot {
   final String name;
@@ -202,32 +203,13 @@ class ReportProvider extends ChangeNotifier {
       final response = await _apiService.exportExcelReport(_getFilterParams());
       final bytes = response.data as List<int>;
       
-      if (kIsWeb) {
-        // Direct browser download path is usually handled by browser download link, 
-        // but for compatibility we can try to prompt save on Web or download as blob.
-        // On web we'll fallback to printing error if picker fails.
-        return false;
-      }
-      
       final now = DateTime.now();
       final dd = now.day.toString().padLeft(2, '0');
       final mm = now.month.toString().padLeft(2, '0');
       final yyyy = now.year.toString();
       final defaultFileName = 'OW_Report_$dd-$mm-$yyyy.xlsx';
 
-      String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save Revenue Report',
-        fileName: defaultFileName,
-        type: FileType.custom,
-        allowedExtensions: ['xlsx'],
-      );
-      
-      if (outputFile != null) {
-        final file = File(outputFile);
-        await file.writeAsBytes(bytes);
-        return true;
-      }
-      return false;
+      return await saveReportFile(bytes, defaultFileName);
     } catch(e) {
       debugPrint('Excel Export Error: $e');
       return false;

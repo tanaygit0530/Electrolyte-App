@@ -664,12 +664,31 @@ const exportExcelReport = async (req, res) => {
     
     // Spawn Python script to populate excel template and refresh pivot table
     const scriptPath = path.join(__dirname, '..', 'services', 'excel_generator.py');
-    const pythonCmd = fs.existsSync('/opt/anaconda3/bin/python3') ? '/opt/anaconda3/bin/python3' : 'python3';
+    let pythonCmd = 'python';
+    if (fs.existsSync('/opt/anaconda3/bin/python3')) {
+      pythonCmd = '/opt/anaconda3/bin/python3';
+    } else if (process.platform !== 'win32') {
+      pythonCmd = 'python3';
+    }
+
+    let responded = false;
     const pythonProc = spawn(pythonCmd, [scriptPath, tempOutFile, selectedMop]);
+
+    pythonProc.on('error', (err) => {
+      if (responded) return;
+      responded = true;
+      console.error('Failed to spawn Python process:', err.message);
+      return res.status(500).json({
+        error: 'Excel generation failed: Python environment not found or failed to spawn.',
+        details: err.message
+      });
+    });
     
     // Write invoices array as JSON to stdin
-    pythonProc.stdin.write(JSON.stringify(invoices));
-    pythonProc.stdin.end();
+    if (pythonProc.stdin) {
+      pythonProc.stdin.write(JSON.stringify(invoices));
+      pythonProc.stdin.end();
+    }
     
     let stderr = '';
     pythonProc.stderr.on('data', (data) => {
@@ -677,6 +696,8 @@ const exportExcelReport = async (req, res) => {
     });
     
     pythonProc.on('close', async (code) => {
+      if (responded) return;
+      responded = true;
       if (code !== 0) {
         console.error('Python Pivot Generator Error (stderr):', stderr);
         return res.status(500).json({ error: 'Excel generation failed', details: stderr });
