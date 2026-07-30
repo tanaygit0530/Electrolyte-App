@@ -157,12 +157,12 @@ const buildBillingTable = (invoiceData, isSymphony) => {
   // Subtotal row
   rowsHtml += `
     <tr class="summary-row">
-      <td></td>
+      <td>&nbsp;</td>
       <td style="text-align: left;"><b>Subtotal</b></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
+      <td>&nbsp;</td>
+      <td>&nbsp;</td>
+      <td>&nbsp;</td>
+      <td>&nbsp;</td>
       <td style="text-align: right;">₹${subTotal.toFixed(2)}</td>
     </tr>
   `;
@@ -171,12 +171,12 @@ const buildBillingTable = (invoiceData, isSymphony) => {
   if (serviceCharge > 0) {
     rowsHtml += `
       <tr class="summary-row">
-        <td></td>
+        <td>&nbsp;</td>
         <td style="text-align: left;">Add : Service Charge</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
         <td style="text-align: right;">₹${serviceCharge.toFixed(2)}</td>
       </tr>
     `;
@@ -188,21 +188,21 @@ const buildBillingTable = (invoiceData, isSymphony) => {
     const sgstVal = gstAmount / 2;
     rowsHtml += `
       <tr class="summary-row">
-        <td></td>
+        <td>&nbsp;</td>
         <td style="text-align: left;">Add : CGST @ 9.00%</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
         <td style="text-align: right;">₹${cgstVal.toFixed(2)}</td>
       </tr>
       <tr class="summary-row">
-        <td></td>
+        <td>&nbsp;</td>
         <td style="text-align: left;">Add : SGST @ 9.00%</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
         <td style="text-align: right;">₹${sgstVal.toFixed(2)}</td>
       </tr>
     `;
@@ -213,12 +213,12 @@ const buildBillingTable = (invoiceData, isSymphony) => {
     const roundedText = roundedOff < 0 ? 'Less : Rounded Off (-)' : 'Add : Rounded Off (+)';
     rowsHtml += `
       <tr class="summary-row">
-        <td></td>
+        <td>&nbsp;</td>
         <td style="text-align: left;">${roundedText}</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
         <td style="text-align: right;">₹${Math.abs(roundedOff).toFixed(2)}</td>
       </tr>
     `;
@@ -227,12 +227,12 @@ const buildBillingTable = (invoiceData, isSymphony) => {
   // Grand Total row
   rowsHtml += `
     <tr class="grand-total-row">
-      <td></td>
+      <td>&nbsp;</td>
       <td style="text-align: left;"><b>Grand Total</b></td>
-      <td></td>
+      <td>&nbsp;</td>
       <td style="text-align: center;"><b>${totalQty.toFixed(3)}</b></td>
       <td style="text-align: center;"><b>${unitName}</b></td>
-      <td></td>
+      <td>&nbsp;</td>
       <td style="text-align: right;"><b>₹${roundedTotal.toFixed(2)}</b></td>
     </tr>
   `;
@@ -266,14 +266,14 @@ const buildUnifiedDetailsBox = (invoiceData, formattedDate) => {
   return `
     <div class="details-container">
       <div class="col-left">
-        <p><b>Party Details :</b></p>
+        <p><b>Party Details:</b></p>
         <p><b>BILL TO:</b> ${invoiceData.customerName || 'Jay'}</p>
         ${phoneLine}
         ${customerEmailLine}
         ${serialLine}
       </div>
       <div class="col-right">
-        <p><b>Invoice Details :</b></p>
+        <p><b>Invoice Details:</b></p>
         <p><b>INVOICE NO:</b> ${invoiceData.invoiceNumber}</p>
         <p><b>CASE ID:</b> ${invoiceData.caseId || '-'}</p>
         <p><b>BILL DATE:</b> ${formattedDate}</p>
