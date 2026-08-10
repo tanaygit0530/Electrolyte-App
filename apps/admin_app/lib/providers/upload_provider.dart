@@ -203,9 +203,6 @@ class UploadProvider extends ChangeNotifier {
         }
       }
 
-      // Set to track duplicate product codes in this spreadsheet
-      final Set<String> processedCodes = {};
-
       // 2. Parse data rows starting from row index 1 (skipping header)
       for (int r = 1; r < rowsData.length; r++) {
         final row = rowsData[r];
@@ -240,25 +237,6 @@ class UploadProvider extends ChangeNotifier {
           continue;
         }
 
-        // Duplicate code validation
-        if (processedCodes.contains(code)) {
-          const dupErr = 'Duplicate product code found in spreadsheet';
-          _failedRowsReport.add(UploadErrorReport(
-            rowNumber: r + 1,
-            productCode: code,
-            errorMessage: dupErr,
-          ));
-          _previewRows.add(PreviewRow(
-            rowNumber: r + 1,
-            productCode: code,
-            originalValue: rawQty ?? '',
-            parsedValueDisplay: 'ERROR',
-            isValid: false,
-            errorMessage: dupErr,
-          ));
-          continue;
-        }
-
         final qtyParseResult = ExcelValidators.validateAndParseStock(rawQty);
         
         if (qtyParseResult.containsKey('error')) {
@@ -278,7 +256,6 @@ class UploadProvider extends ChangeNotifier {
           ));
         } else {
           final parsedQty = qtyParseResult['value'] as int;
-          processedCodes.add(code);
           _validRowsPayload.add({
             'productCode': code,
             'stockQuantity': parsedQty,
@@ -368,8 +345,6 @@ class UploadProvider extends ChangeNotifier {
         }
       }
 
-      final Set<String> processedCodes = {};
-
       // 2. Parse data rows skipping header row
       for (int r = 1; r < rowsData.length; r++) {
         final row = rowsData[r];
@@ -402,25 +377,6 @@ class UploadProvider extends ChangeNotifier {
           continue;
         }
 
-        // Duplicate code validation
-        if (processedCodes.contains(code)) {
-          const dupErr = 'Duplicate product code found in spreadsheet';
-          _failedRowsReport.add(UploadErrorReport(
-            rowNumber: r + 1,
-            productCode: code,
-            errorMessage: dupErr,
-          ));
-          _previewRows.add(PreviewRow(
-            rowNumber: r + 1,
-            productCode: code,
-            originalValue: rawPrice ?? '',
-            parsedValueDisplay: 'ERROR',
-            isValid: false,
-            errorMessage: dupErr,
-          ));
-          continue;
-        }
-
         final priceParseResult = ExcelValidators.validateAndParsePrice(rawPrice);
 
         if (priceParseResult.containsKey('error')) {
@@ -440,7 +396,6 @@ class UploadProvider extends ChangeNotifier {
           ));
         } else {
           final parsedPrice = priceParseResult['value'] as double;
-          processedCodes.add(code);
           _validRowsPayload.add({
             'productCode': code,
             'productPrice': parsedPrice,

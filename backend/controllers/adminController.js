@@ -71,10 +71,9 @@ const uploadStock = async (req, res) => {
     let updatedRows = 0;
     let failedRows = 0;
     const errors = [];
-    const validRows = [];
-    const seenCodes = new Set();
+    const aggregatedMap = new Map();
 
-    // 1. Validate rows in memory
+    // 1. Validate rows in memory and aggregate by product code
     for (const row of rows) {
       const { productCode, stockQuantity, location } = row;
 
@@ -99,46 +98,71 @@ const uploadStock = async (req, res) => {
         continue;
       }
 
-      if (seenCodes.has(code)) {
-        failedRows++;
-        errors.push({ productCode: code, error: 'Duplicate product code in spreadsheet' });
-        continue;
-      }
-      seenCodes.add(code);
+      const locStr = location ? String(location).trim() : 'N/A';
 
-      validRows.push({ 
-        productCode: code, 
-        qty, 
-        location: location ? String(location).trim() : 'N/A' 
+      if (aggregatedMap.has(code)) {
+        const item = aggregatedMap.get(code);
+        item.qty += qty;
+        if (locStr && locStr !== 'N/A') {
+          item.locations.add(locStr);
+        }
+      } else {
+        const locSet = new Set();
+        if (locStr && locStr !== 'N/A') {
+          locSet.add(locStr);
+        }
+        aggregatedMap.set(code, {
+          productCode: code.length > 255 ? code.substring(0, 255) : code,
+          qty,
+          locations: locSet
+        });
+      }
+    }
+
+    const validRows = [];
+    for (const item of aggregatedMap.values()) {
+      let finalLocation = 'N/A';
+      if (item.locations.size > 0) {
+        finalLocation = Array.from(item.locations).join(', ');
+        if (finalLocation.length > 255) {
+          finalLocation = finalLocation.substring(0, 252) + '...';
+        }
+      }
+      validRows.push({
+        productCode: item.productCode,
+        qty: item.qty,
+        location: finalLocation
       });
     }
 
-    // 2. Execute single highly-optimized bulk upsert query
+    // 2. Execute bulk upsert query in batches
     if (validRows.length > 0) {
-      const valuePairs = [];
-      const queryParams = [];
-      let paramIndex = 1;
+      const batchSize = 2000;
+      for (let i = 0; i < validRows.length; i += batchSize) {
+        const batch = validRows.slice(i, i + batchSize);
+        const valuePairs = [];
+        const queryParams = [];
+        let paramIndex = 1;
 
-      for (const r of validRows) {
-        valuePairs.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, 0.00, $${paramIndex + 3})`);
-        queryParams.push(r.productCode, r.productCode, r.qty, r.location);
-        paramIndex += 4;
+        for (const r of batch) {
+          valuePairs.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, 0.00, $${paramIndex + 3})`);
+          queryParams.push(r.productCode, r.productCode, r.qty, r.location);
+          paramIndex += 4;
+        }
+
+        const bulkUpsertQuery = `
+          INSERT INTO products (product_code, product_name, stock_quantity, product_price, location)
+          VALUES ${valuePairs.join(', ')}
+          ON CONFLICT (product_code)
+          DO UPDATE SET 
+            stock_quantity = EXCLUDED.stock_quantity,
+            location = EXCLUDED.location,
+            updated_at = CURRENT_TIMESTAMP;
+        `;
+
+        await client.query(bulkUpsertQuery, queryParams);
       }
-
-      // If product doesn't exist, insert it with price 0.00 and location. 
-      // If it exists, update stock_quantity and location (preserving the existing price).
-      const bulkUpsertQuery = `
-        INSERT INTO products (product_code, product_name, stock_quantity, product_price, location)
-        VALUES ${valuePairs.join(', ')}
-        ON CONFLICT (product_code)
-        DO UPDATE SET 
-          stock_quantity = EXCLUDED.stock_quantity,
-          location = EXCLUDED.location,
-          updated_at = CURRENT_TIMESTAMP;
-      `;
-
-      await client.query(bulkUpsertQuery, queryParams);
-      updatedRows = validRows.length;
+      updatedRows = totalRows - failedRows;
     }
 
     // 3. Save to history
@@ -195,10 +219,9 @@ const uploadPrice = async (req, res) => {
     let updatedRows = 0;
     let failedRows = 0;
     const errors = [];
-    const validRows = [];
-    const seenCodes = new Set();
+    const aggregatedMap = new Map();
 
-    // 1. Validate rows in memory
+    // 1. Validate rows in memory and handle duplicates (take latest price)
     for (const row of rows) {
       const { productCode, productPrice } = row;
 
@@ -223,41 +246,38 @@ const uploadPrice = async (req, res) => {
         continue;
       }
 
-      if (seenCodes.has(code)) {
-        failedRows++;
-        errors.push({ productCode: code, error: 'Duplicate product code in spreadsheet' });
-        continue;
-      }
-      seenCodes.add(code);
-
-      validRows.push({ productCode: code, price });
+      aggregatedMap.set(code, { productCode: code, price });
     }
 
-    // 2. Execute single highly-optimized bulk upsert query
+    const validRows = Array.from(aggregatedMap.values());
+
+    // 2. Execute bulk upsert query in batches
     if (validRows.length > 0) {
-      const valuePairs = [];
-      const queryParams = [];
-      let paramIndex = 1;
+      const batchSize = 2000;
+      for (let i = 0; i < validRows.length; i += batchSize) {
+        const batch = validRows.slice(i, i + batchSize);
+        const valuePairs = [];
+        const queryParams = [];
+        let paramIndex = 1;
 
-      for (const r of validRows) {
-        valuePairs.push(`($${paramIndex}, $${paramIndex + 1}, 0, $${paramIndex + 2}::numeric)`);
-        queryParams.push(r.productCode, r.productCode, r.price);
-        paramIndex += 3;
+        for (const r of batch) {
+          valuePairs.push(`($${paramIndex}, $${paramIndex + 1}, 0, $${paramIndex + 2}::numeric)`);
+          queryParams.push(r.productCode, r.productCode, r.price);
+          paramIndex += 3;
+        }
+
+        const bulkUpsertQuery = `
+          INSERT INTO products (product_code, product_name, stock_quantity, product_price)
+          VALUES ${valuePairs.join(', ')}
+          ON CONFLICT (product_code)
+          DO UPDATE SET 
+            product_price = EXCLUDED.product_price,
+            updated_at = CURRENT_TIMESTAMP;
+        `;
+
+        await client.query(bulkUpsertQuery, queryParams);
       }
-
-      // If product doesn't exist, insert it with stock 0.
-      // If it exists, only update product_price (preserving the existing stock).
-      const bulkUpsertQuery = `
-        INSERT INTO products (product_code, product_name, stock_quantity, product_price)
-        VALUES ${valuePairs.join(', ')}
-        ON CONFLICT (product_code)
-        DO UPDATE SET 
-          product_price = EXCLUDED.product_price,
-          updated_at = CURRENT_TIMESTAMP;
-      `;
-
-      await client.query(bulkUpsertQuery, queryParams);
-      updatedRows = validRows.length;
+      updatedRows = totalRows - failedRows;
     }
 
     // 3. Save to history

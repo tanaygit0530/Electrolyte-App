@@ -20,11 +20,12 @@ const setup = async () => {
         description TEXT,
         stock_quantity INTEGER NOT NULL DEFAULT 0,
         product_price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
-        location VARCHAR(255) DEFAULT 'N/A',
+        location TEXT DEFAULT 'N/A',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await pool.query(`ALTER TABLE products ALTER COLUMN location TYPE TEXT;`).catch(() => {});
     console.log('- products table verified/created');
 
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin (product_name gin_trgm_ops);`);

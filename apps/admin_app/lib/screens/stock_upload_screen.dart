@@ -421,7 +421,7 @@ class _StockUploadScreenState extends State<StockUploadScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     const Text(
-                                      'Rows contain negative values, blank codes, formats, or duplicate product entries. Fix these in Excel before sync, or download an error report.',
+                                      'Rows contain negative values, blank codes, or invalid formats. Fix these in Excel before sync, or download an error report.',
                                       style: TextStyle(fontSize: 12, color: AdminTheme.textSecondary, height: 1.4, fontFamily: 'Poppins'),
                                     ),
                                     const SizedBox(height: 20),

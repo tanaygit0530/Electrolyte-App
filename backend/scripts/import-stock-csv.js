@@ -16,8 +16,7 @@ const importStockCSV = async () => {
     const data = xlsx.utils.sheet_to_json(worksheet);
     console.log(`Parsed ${data.length} rows from CSV. Starting NeonDB bulk upsert...`);
 
-    const validRows = [];
-    const seenCodes = new Set();
+    const aggregatedMap = new Map();
 
     for (const row of data) {
       const rawCode = row['Product Code'] || row['code'] || row['Product_Code'];
@@ -30,20 +29,49 @@ const importStockCSV = async () => {
       if (!rawCode) continue;
 
       const code = String(rawCode).trim();
-      
-      // De-duplicate codes in the array before bulk query
-      if (seenCodes.has(code)) {
-        continue;
-      }
-      seenCodes.add(code);
+      const qty = parseInt(rawQty) || 0;
+      const price = parseFloat(rawPrice) || 0.00;
+      const locStr = String(rawLocation).trim();
 
+      if (aggregatedMap.has(code)) {
+        const item = aggregatedMap.get(code);
+        item.qty += qty;
+        if (price > 0) item.price = price;
+        if (locStr && locStr !== 'N/A') {
+          item.locations.add(locStr);
+        }
+      } else {
+        const locSet = new Set();
+        if (locStr && locStr !== 'N/A') {
+          locSet.add(locStr);
+        }
+        aggregatedMap.set(code, {
+          code,
+          name: String(rawName).trim(),
+          desc: String(rawDesc).trim(),
+          qty,
+          price,
+          locations: locSet
+        });
+      }
+    }
+
+    const validRows = [];
+    for (const item of aggregatedMap.values()) {
+      let finalLocation = 'N/A';
+      if (item.locations.size > 0) {
+        finalLocation = Array.from(item.locations).join(', ');
+        if (finalLocation.length > 255) {
+          finalLocation = finalLocation.substring(0, 252) + '...';
+        }
+      }
       validRows.push({
-        code,
-        name: String(rawName).trim(),
-        desc: String(rawDesc).trim(),
-        qty: parseInt(rawQty) || 0,
-        price: parseFloat(rawPrice) || 0.00,
-        location: String(rawLocation).trim()
+        code: item.code,
+        name: item.name,
+        desc: item.desc,
+        qty: item.qty,
+        price: item.price,
+        location: finalLocation
       });
     }
 
