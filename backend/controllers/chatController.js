@@ -1,4 +1,7 @@
 const { pool } = require('../config/neondb');
+const { searchProducts } = require('../services/searchService');
+const { detectIntent } = require('../services/intentService');
+const { generateSearchReply, generateGeneralReply } = require('../services/llmService');
 require('dotenv').config();
 
 const formatComponent = (prod) => ({
@@ -29,15 +32,13 @@ exports.processChat = async (req, res) => {
   try {
     client = await pool.connect();
 
-    console.log('User Message:', userMessage);
-    console.time('processChat');
+    const intent = detectIntent(userMessage);
+    console.log('[chatController] Detected intent:', intent);
 
     // ==========================
     // CREATE NEW SESSION
     // ==========================
     if (!sessionId) {
-      console.time('createSession');
-
       const title =
         userMessage.substring(0, 30) +
         (userMessage.length > 30 ? '...' : '');
@@ -53,10 +54,6 @@ exports.processChat = async (req, res) => {
 
       sessionId = sessionRes.rows[0].id;
 
-      console.timeEnd('createSession');
-
-      console.time('saveUserMessage');
-
       await client.query(
         `
         INSERT INTO chat_messages
@@ -65,14 +62,10 @@ exports.processChat = async (req, res) => {
         `,
         [sessionId, 'user', userMessage]
       );
-
-      console.timeEnd('saveUserMessage');
     } else {
       // ==========================
       // EXISTING SESSION
       // ==========================
-      console.time('updateSessionAndSaveMessage');
-
       await Promise.all([
         client.query(
           `
@@ -92,70 +85,46 @@ exports.processChat = async (req, res) => {
           [sessionId, 'user', userMessage]
         )
       ]);
-
-      console.timeEnd('updateSessionAndSaveMessage');
     }
-
-    // ==========================
-    // PRODUCT SEARCH
-    // ==========================
-    console.time('productSearch');
-
-    const queryStr = `%${userMessage}%`;
-
-    const prodRes = await client.query(
-      `
-      SELECT
-        id,
-        product_name,
-        product_code,
-        description,
-        product_price,
-        stock_quantity,
-        location
-      FROM products
-      WHERE (
-           word_similarity($1, product_name) > 0.3
-        OR word_similarity($1, product_code) > 0.3
-        OR word_similarity($1, description) > 0.3
-        OR product_name ILIKE $2
-        OR product_code ILIKE $2
-        OR description ILIKE $2
-      )
-      AND stock_quantity > 0
-      ORDER BY GREATEST(
-        word_similarity($1, product_name),
-        word_similarity($1, product_code),
-        word_similarity($1, description)
-      ) DESC
-      LIMIT 20
-      `,
-      [userMessage, queryStr]
-    );
-
-    console.timeEnd('productSearch');
-
-    const components = prodRes.rows;
 
     let replyMessage = '';
     let formattedComponents = [];
 
-    if (components.length === 0) {
-      replyMessage =
-        'No matching spare parts found for your query.';
-    } else {
-      replyMessage =
-        `Found ${components.length} matching component(s):`;
+    switch (intent) {
+      case 'greeting':
+        replyMessage = "Hello! I'm your Spare Parts Assistant. How can I help you today?";
+        break;
 
-      formattedComponents =
-        components.map(formatComponent);
+      case 'thanks':
+        replyMessage = "You're welcome! Let me know if you need help finding any spare parts.";
+        break;
+
+      case 'goodbye':
+        replyMessage = 'Goodbye! Have a great day.';
+        break;
+
+      case 'help':
+        replyMessage = "You can search using product names, models (GV3, GV4, GV5), dimensions (1200mm), product codes, colours, or descriptions. Example: 'GV5 PCB', 'motor housing gv4', '1200mm renesa'.";
+        break;
+
+      default: {
+        const products = await searchProducts(userMessage);
+
+        if (products.length > 0) {
+          replyMessage = `Found ${products.length} matching component(s):`;
+          formattedComponents = products.map(formatComponent);
+        } else {
+          replyMessage = await generateGeneralReply(userMessage);
+          formattedComponents = [];
+        }
+
+        break;
+      }
     }
 
     // ==========================
     // SAVE ASSISTANT MESSAGE
     // ==========================
-    console.time('saveAssistantMessage');
-
     await client.query(
       `
       INSERT INTO chat_messages
@@ -163,14 +132,6 @@ exports.processChat = async (req, res) => {
       VALUES ($1, $2, $3)
       `,
       [sessionId, 'assistant', replyMessage]
-    );
-
-    console.timeEnd('saveAssistantMessage');
-
-    console.timeEnd('processChat');
-
-    console.log(
-      `Total API Time: ${Date.now() - totalStart} ms`
     );
 
     return res.json({
