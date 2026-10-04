@@ -6,6 +6,7 @@ import 'providers/theme_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/serial_check_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -25,6 +26,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+        ChangeNotifierProvider(create: (_) => SerialCheckProvider(apiService)),
       ],
       child: const SparePartsApp(),
     ),

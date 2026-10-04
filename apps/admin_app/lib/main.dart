@@ -6,6 +6,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/upload_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/report_provider.dart';
+import 'providers/service_records_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_workspace.dart';
 import 'services/api_service.dart';
@@ -30,6 +31,7 @@ class _ElectrolyteAdminAppAppState extends State<ElectrolyteAdminApp> {
   late final UploadProvider _uploadProvider;
   late final UserProvider _userProvider;
   late final ReportProvider _reportProvider;
+  late final ServiceRecordsProvider _serviceRecordsProvider;
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _ElectrolyteAdminAppAppState extends State<ElectrolyteAdminApp> {
     _uploadProvider = UploadProvider(_apiService);
     _userProvider = UserProvider(_apiService);
     _reportProvider = ReportProvider(_apiService);
+    _serviceRecordsProvider = ServiceRecordsProvider(_apiService);
   }
 
   @override
@@ -52,6 +55,7 @@ class _ElectrolyteAdminAppAppState extends State<ElectrolyteAdminApp> {
         ChangeNotifierProvider<UploadProvider>.value(value: _uploadProvider),
         ChangeNotifierProvider<UserProvider>.value(value: _userProvider),
         ChangeNotifierProvider<ReportProvider>.value(value: _reportProvider),
+        ChangeNotifierProvider<ServiceRecordsProvider>.value(value: _serviceRecordsProvider),
         ChangeNotifierProvider<ChatProvider>(create: (_) => ChatProvider()),
         ChangeNotifierProvider<ChatHistoryProvider>(create: (_) => ChatHistoryProvider()),
       ],

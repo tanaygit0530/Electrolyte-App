@@ -9,6 +9,7 @@ import 'history_screen.dart';
 import 'billing_screen.dart';
 import 'profile_screen.dart';
 import 'alerts_screen.dart';
+import 'serial_check_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -28,6 +29,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const ChatbotScreen(),
+    const SerialCheckScreen(),
     const HistoryScreen(),
     const BillingScreen(),
     const ProfileScreen(),
@@ -84,6 +86,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.chat_bubble_outline),
             activeIcon: Icon(Icons.chat_bubble),
             label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code_scanner_outlined),
+            activeIcon: Icon(Icons.qr_code_scanner),
+            label: 'Verify',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.history_outlined),

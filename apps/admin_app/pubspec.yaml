@@ -48,6 +48,7 @@ dependencies:
     path: ../../packages/shared_core
   shared_ui:
     path: ../../packages/shared_ui
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

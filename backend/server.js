@@ -16,6 +16,7 @@ const ordersRoutes = require('./routes/orders');
 const authRoutes = require('./routes/authRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const serviceRecordsRoutes = require('./routes/serviceRecordsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -33,6 +34,7 @@ app.use('/orders', ordersRoutes);
 app.use('/auth', authRoutes);
 app.use('/invoice', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/service-records', serviceRecordsRoutes);
 
 const path = require('path');
 app.get('/', (req, res) => {
@@ -57,6 +59,10 @@ const server = app.listen(PORT, () => {
   // Initialize DB Trigger and Real-time listener
   setupDatabaseTriggerAndListener();
 });
+
+// Configure generous server timeouts for large file uploads
+server.timeout = 10 * 60 * 1000; // 10 minutes
+server.keepAliveTimeout = 65000;
 
 // Setup Real-time WebSocket Broadcaster
 const wssClients = new Set();

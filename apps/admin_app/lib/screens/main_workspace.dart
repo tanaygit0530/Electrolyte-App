@@ -13,8 +13,10 @@ import 'admin_chatbot_screen.dart';
 import 'admin_billing_screen.dart';
 import 'user_management_screen.dart';
 import 'technician_revenue_report_screen.dart';
+import 'service_data_upload_screen.dart';
 import '../providers/user_provider.dart';
 import '../providers/report_provider.dart';
+import '../providers/service_records_provider.dart';
 import '../utils/theme.dart';
 
 class MainWorkspace extends StatefulWidget {
@@ -43,6 +45,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return 'Invoice Generator';
       case 6:
         return 'Technician Revenue Reports';
+      case 7:
+        return 'Service Records & 60-Day Audit';
       default:
         return 'Admin Control Panel';
     }
@@ -78,6 +82,9 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       case 6:
         Provider.of<ReportProvider>(context, listen: false).fetchReport();
         break;
+      case 7:
+        Provider.of<ServiceRecordsProvider>(context, listen: false).reset();
+        break;
     }
   }
 
@@ -97,6 +104,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return Provider.of<ChatHistoryProvider>(context).isLoading || Provider.of<ChatProvider>(context).isLoading;
       case 6:
         return Provider.of<ReportProvider>(context).isLoading;
+      case 7:
+        return Provider.of<ServiceRecordsProvider>(context).isUploading;
       default:
         return false;
     }
@@ -152,6 +161,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       const AdminChatbotScreen(),
       const AdminBillingScreen(),
       const TechnicianRevenueReportScreen(),
+      const ServiceDataUploadScreen(),
     ];
 
     final bool isLoading = _isPageLoading(context);

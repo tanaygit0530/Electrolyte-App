@@ -198,4 +198,21 @@ class SharedApiService {
       throw Exception('Failed to load invoices');
     }
   }
+
+  /// Check if a serial number has a service record within the last 60 days
+  Future<Map<String, dynamic>> checkSerialNumber(String serialNumber) async {
+    final clean = Uri.encodeComponent(serialNumber.trim());
+    final response = await _get('$baseUrl/api/service-records/check/$clean');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      try {
+        final err = json.decode(response.body);
+        throw Exception(err['error'] ?? 'Failed to check serial number');
+      } catch (_) {
+        throw Exception('Server returned status ${response.statusCode}');
+      }
+    }
+  }
 }
+

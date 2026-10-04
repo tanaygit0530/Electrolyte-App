@@ -275,4 +275,69 @@ class ApiService {
       throw Exception(msg);
     }
   }
+
+  /// Upload Bulk Service Data File (.xlsx / .csv) and audit 60-day window
+  Future<Map<String, dynamic>> uploadServiceFile(
+    String filePath,
+    String fileName,
+    void Function(int sent, int total)? onProgress,
+  ) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final response = await _dio.post(
+        '$baseUrl/api/service-records/upload',
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(minutes: 5),
+        ),
+        onSendProgress: onProgress,
+      );
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Service records upload failed: ${e.message}';
+      throw Exception(msg);
+    }
+  }
+
+  /// Get Found Service Entries currently within 60 days
+  Future<Map<String, dynamic>> getFoundServiceEntries({int limit = 100, int offset = 0, String? search}) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/api/service-records/found-entries',
+        queryParameters: {
+          'limit': limit,
+          'offset': offset,
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+      );
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to load found service entries';
+      throw Exception(msg);
+    }
+  }
+
+  /// Export Found Service Entries to CSV
+  Future<Response> exportFoundServiceRecordsCsv() async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/api/service-records/export-found',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to export found records CSV';
+      throw Exception(msg);
+    }
+  }
 }
