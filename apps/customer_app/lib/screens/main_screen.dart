@@ -8,7 +8,6 @@ import 'chatbot_screen.dart';
 import 'history_screen.dart';
 import 'billing_screen.dart';
 import 'profile_screen.dart';
-import 'alerts_screen.dart';
 import 'serial_check_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -33,7 +32,6 @@ class _MainScreenState extends State<MainScreen> {
     const HistoryScreen(),
     const BillingScreen(),
     const ProfileScreen(),
-    const AlertsScreen(),
   ];
 
   @override
@@ -106,11 +104,6 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none),
-            activeIcon: Icon(Icons.notifications),
-            label: 'Alerts',
           ),
         ],
       ),
