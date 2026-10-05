@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 const url = require('url');
 const jwt = require('jsonwebtoken');
 const { pool } = require('./config/neondb');
+const { closeBrowser, getBrowser } = require('./services/pdfService');
 
 const chatRoutes = require('./routes/chatRoutes');
 const partsRoutes = require('./routes/parts');
@@ -243,7 +244,7 @@ wss.on('connection', async (ws, req) => {
   }
 });
 
-const { closeBrowser, getBrowser } = require('./services/pdfService');
+
 
 // Global process error handlers to log and prevent automatic exit on unhandled promise rejections or exceptions
 process.on('unhandledRejection', (reason, promise) => {

@@ -257,26 +257,26 @@ class ServiceDataUploadScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        // Found (Within 60 Days) - HIGHLIGHTED IN EMERALD
+        // Found (Within 60 Days) - HIGHLIGHTED IN RED (REPEAT RISK - DO NOT CLOSE)
         Expanded(
           child: _buildKpiCard(
-            title: 'Found within Last 60 Days',
+            title: 'Repeat Risk (< 60 Days)',
             value: summary.foundWithin60Days.toString(),
-            subtitle: 'End Date within last 60 days',
-            icon: Icons.verified_rounded,
-            accentColor: AdminTheme.accentEmerald,
+            subtitle: "Don't close call • Repeat risk",
+            icon: Icons.warning_amber_rounded,
+            accentColor: AdminTheme.errorColor,
             isHighlighted: true,
           ),
         ),
         const SizedBox(width: 16),
-        // Older than 60 Days
+        // Older than 60 Days - SAFE TO CLOSE
         Expanded(
           child: _buildKpiCard(
-            title: 'Older than 60 Days',
+            title: 'Safe to Close (> 60 Days)',
             value: summary.olderThan60Days.toString(),
-            subtitle: 'Historical service records',
-            icon: Icons.history_toggle_off_rounded,
-            accentColor: AdminTheme.textSecondary,
+            subtitle: 'Beyond 60 days • Safe to close',
+            icon: Icons.check_circle_outline_rounded,
+            accentColor: AdminTheme.accentEmerald,
           ),
         ),
       ],
@@ -380,10 +380,10 @@ class ServiceDataUploadScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.check_circle_outline, color: AdminTheme.accentEmerald, size: 22),
+                  const Icon(Icons.warning_amber_rounded, color: AdminTheme.errorColor, size: 22),
                   const SizedBox(width: 10),
                   Text(
-                    'Found Serial Numbers (${provider.foundEntries.length} entries)',
+                    'Repeat Risk Serials (< 60 Days: ${provider.foundEntries.length} entries)',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -400,16 +400,16 @@ class ServiceDataUploadScreen extends StatelessWidget {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('CSV Export saved to $path'),
-                        backgroundColor: AdminTheme.accentEmerald,
+                        backgroundColor: AdminTheme.errorColor,
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   }
                 },
                 icon: const Icon(Icons.download, size: 18),
-                label: const Text('Export Found CSV'),
+                label: const Text('Export Repeat Risk CSV'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AdminTheme.accentEmerald,
+                  backgroundColor: AdminTheme.errorColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -489,7 +489,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
                               style: const TextStyle(
                                 fontFamily: 'monospace',
                                 fontWeight: FontWeight.bold,
-                                color: AdminTheme.accentEmerald,
+                                color: AdminTheme.errorColor,
                               ),
                             ),
                             IconButton(
@@ -513,13 +513,14 @@ class ServiceDataUploadScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AdminTheme.accentEmerald.withOpacity(0.15),
+                            color: AdminTheme.errorColor.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AdminTheme.errorColor.withOpacity(0.3)),
                           ),
                           child: Text(
-                            '${entry.daysAgo} days ago',
+                            '${entry.daysAgo} days (Repeat Risk)',
                             style: const TextStyle(
-                              color: AdminTheme.accentEmerald,
+                              color: AdminTheme.errorColor,
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                             ),

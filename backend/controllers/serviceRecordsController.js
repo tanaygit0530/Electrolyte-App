@@ -95,10 +95,12 @@ exports.checkSerialNumber = async (req, res) => {
     if (result.rows.length === 0) {
       return res.json({
         success: true,
-        status: 'NOT FOUND',
+        status: 'SAFE TO CLOSE',
         isWithin60Days: false,
+        repeatRisk: false,
+        canCloseCall: true,
         serialNumber: cleanSerial,
-        message: 'No service record found in the database for this serial number.',
+        message: 'Safe to close the call. No prior service record found in the database.',
         record: null
       });
     }
@@ -112,13 +114,15 @@ exports.checkSerialNumber = async (req, res) => {
     if (isWithin60Days) {
       return res.json({
         success: true,
-        status: 'FOUND',
+        status: 'REPEAT RISK',
         isWithin60Days: true,
+        repeatRisk: true,
+        canCloseCall: false,
         daysAgo: daysAgo,
         serialNumber: row.serial_no,
         serviceDate: displayEndDate,
         endDate: displayEndDate,
-        message: `Serial number was serviced ${daysAgo} days ago (End Date: ${displayEndDate}), within the active 60-day window.`,
+        message: `Don't close the call, it may come in repeat. Serial number was serviced ${daysAgo} days ago (End Date: ${displayEndDate}), within the 60-day repeat risk window.`,
         record: {
           caseNumber: row.case_number,
           customerName: row.customer_name,
@@ -136,15 +140,17 @@ exports.checkSerialNumber = async (req, res) => {
         }
       });
     } else {
-      let notFoundMsg = `Serial number found in archive, but End Date was ${daysAgo} days ago (${displayEndDate}), which is outside the active 60-day window.`;
+      let notFoundMsg = `Safe to close the call. Last service End Date was ${daysAgo} days ago (${displayEndDate}), beyond the 60-day repeat window.`;
       if (!hasValidEndDate) {
-        notFoundMsg = `Serial number found in archive, but has no valid End Date on record to verify 60-day eligibility.`;
+        notFoundMsg = `Safe to close the call. No valid recent End Date found within the 60-day repeat window.`;
       }
 
       return res.json({
         success: true,
-        status: 'NOT FOUND',
+        status: 'SAFE TO CLOSE',
         isWithin60Days: false,
+        repeatRisk: false,
+        canCloseCall: true,
         daysAgo: daysAgo,
         serialNumber: row.serial_no,
         serviceDate: displayEndDate,

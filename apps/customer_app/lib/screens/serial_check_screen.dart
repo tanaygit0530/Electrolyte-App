@@ -435,18 +435,24 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
     );
   }
 
-  // --- RESULT VIEW: FOUND or NOT FOUND ---
+  // --- RESULT VIEW: REPEAT RISK (RED) vs SAFE TO CLOSE (GREEN) ---
   Widget _buildResultView(BuildContext context, SerialCheckProvider provider, bool isDark) {
     final result = provider.result!;
-    final isFound = result.isFound;
-    final primaryColor = isFound ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final isRepeatRisk = result.isWithin60Days;
+    final primaryColor = isRepeatRisk ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    final bannerBg = isRepeatRisk
+        ? (isDark ? const Color(0xFF3B1212) : const Color(0xFFFEF2F2))
+        : (isDark ? const Color(0xFF06331E) : const Color(0xFFECFDF5));
+    final bannerBorder = isRepeatRisk
+        ? const Color(0xFFF87171)
+        : const Color(0xFF34D399);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header Card with prominent FOUND / NOT FOUND badge
+          // Header Card with prominent REPEAT RISK / SAFE TO CLOSE status
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -455,15 +461,15 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
               border: Border.all(color: primaryColor.withOpacity(0.6), width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: primaryColor.withOpacity(0.15),
-                  blurRadius: 18,
+                  color: primaryColor.withOpacity(0.16),
+                  blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),
               ],
             ),
             child: Column(
               children: [
-                // Animated Status Icon
+                // Status Icon with circular glow
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -471,61 +477,105 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isFound ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                    isRepeatRisk ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
                     color: primaryColor,
-                    size: 56,
+                    size: 58,
                   ),
                 ),
                 const SizedBox(height: 16),
+
                 // Status Text Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
                   decoration: BoxDecoration(
                     color: primaryColor,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(
-                    result.status.toUpperCase(),
+                    isRepeatRisk ? 'REPEAT RISK' : 'SAFE TO CLOSE',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 19,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 2,
                     ),
                   ),
                 ),
+                const SizedBox(height: 18),
+
+                // Prominent Callout Banner with exact user requested messages
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: bannerBg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: bannerBorder.withOpacity(0.6), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isRepeatRisk ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+                        color: primaryColor,
+                        size: 26,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          isRepeatRisk
+                              ? "Don't close the call, it may come in repeat."
+                              : "Safe to close the call.",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: primaryColor,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 14),
-                // Subtext / Days Ago
-                if (isFound && result.daysAgo != null)
+
+                // Subtext / Days Ago detail
+                if (isRepeatRisk && result.daysAgo != null)
                   Text(
-                    'End Date was ${result.daysAgo} days ago (Within last 60 days)',
+                    'End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''})\nWithin the 60-day repeat risk window.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.red.shade300 : Colors.red.shade700,
+                      height: 1.3,
                     ),
                   )
-                else if (!isFound && result.daysAgo != null)
+                else if (!isRepeatRisk && result.daysAgo != null)
                   Text(
-                    'End Date was ${result.daysAgo} days ago (Exceeds 60-day window)',
+                    'Last service End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''})\nExceeds 60 days • Safe to proceed.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.green.shade300 : Colors.green.shade700,
+                      height: 1.3,
                     ),
                   )
                 else
                   Text(
-                    result.message ?? 'No service records found in database',
+                    result.message ?? 'No prior service records found in database.\nSafe to proceed.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.green.shade300 : Colors.green.shade700,
+                      height: 1.3,
                     ),
                   ),
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 10),
+
                 // Serial Number badge
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -537,7 +587,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                       ),
                     ),
-                    Text(
+                    SelectableText(
                       result.serialNumber,
                       style: const TextStyle(
                         fontFamily: 'monospace',
