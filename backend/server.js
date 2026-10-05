@@ -152,9 +152,11 @@ const setupDatabaseTriggerAndListener = async () => {
     console.log('PostgreSQL trigger functions set up successfully');
 
     // 2. Set up a dedicated client to LISTEN to the channel
+    const dbUrl = (process.env.DATABASE_URL || '').trim();
+    const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
     const listenClient = new Client({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+      connectionString: dbUrl,
+      ssl: isLocalhost ? false : { rejectUnauthorized: false }
     });
 
     await listenClient.connect();
@@ -172,14 +174,15 @@ const setupDatabaseTriggerAndListener = async () => {
     });
 
     listenClient.on('error', (err) => {
-      console.error('Dedicated LISTEN client connection error:', err);
-      // Attempt reconnect after 5 seconds
-      setTimeout(setupDatabaseTriggerAndListener, 5000);
+      console.error('Dedicated LISTEN client connection error:', err.message || err);
+      // Attempt reconnect after 15 seconds
+      setTimeout(setupDatabaseTriggerAndListener, 15000);
     });
 
   } catch (err) {
-    console.error('Failed to set up PostgreSQL database trigger or listener:', err);
-    setTimeout(setupDatabaseTriggerAndListener, 5000);
+    console.error('Failed to set up PostgreSQL database trigger or listener:', err.message || err);
+    console.warn('Backend server remains operational. Will retry database listener setup in 15 seconds...');
+    setTimeout(setupDatabaseTriggerAndListener, 15000);
   }
 };
 

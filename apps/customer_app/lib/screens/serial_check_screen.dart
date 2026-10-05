@@ -492,12 +492,12 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(
-                    isRepeatRisk ? 'REPEAT RISK' : 'SAFE TO CLOSE',
+                    isRepeatRisk ? 'REPEAT RISK (< 60 DAYS)' : 'SAFE TO CLOSE (> 60 DAYS)',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 19,
+                      fontSize: 17,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ),
@@ -506,28 +506,28 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 // Prominent Callout Banner with exact user requested messages
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
                     color: bannerBg,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: bannerBorder.withOpacity(0.6), width: 1.5),
+                    border: Border.all(color: bannerBorder.withOpacity(0.8), width: 2),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        isRepeatRisk ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+                        isRepeatRisk ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
                         color: primaryColor,
-                        size: 26,
+                        size: 30,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           isRepeatRisk
                               ? "Don't close the call, it may come in repeat."
                               : "Safe to close the call.",
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
                             color: primaryColor,
                             height: 1.25,
                           ),
@@ -541,35 +541,35 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 // Subtext / Days Ago detail
                 if (isRepeatRisk && result.daysAgo != null)
                   Text(
-                    'End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''})\nWithin the 60-day repeat risk window.',
+                    'Last service End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''}).\nFalls within the 60-day repeat risk window.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.red.shade300 : Colors.red.shade700,
-                      height: 1.3,
+                      height: 1.35,
                     ),
                   )
                 else if (!isRepeatRisk && result.daysAgo != null)
                   Text(
-                    'Last service End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''})\nExceeds 60 days • Safe to proceed.',
+                    'Last service End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''}).\nExceeds 60 days • Safe to close.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.green.shade300 : Colors.green.shade700,
-                      height: 1.3,
+                      height: 1.35,
                     ),
                   )
                 else
                   Text(
-                    result.message ?? 'No prior service records found in database.\nSafe to proceed.',
+                    'No prior service records found in database.\nSafe to close.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.green.shade300 : Colors.green.shade700,
-                      height: 1.3,
+                      height: 1.35,
                     ),
                   ),
                 const SizedBox(height: 16),
