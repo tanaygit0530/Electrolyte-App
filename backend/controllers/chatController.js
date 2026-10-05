@@ -1,7 +1,6 @@
 const { pool } = require('../config/neondb');
 const { searchProducts } = require('../services/searchService');
 const { detectIntent } = require('../services/intentService');
-const { generateSearchReply, generateGeneralReply } = require('../services/llmService');
 require('dotenv').config();
 
 const formatComponent = (prod) => ({
@@ -114,7 +113,7 @@ exports.processChat = async (req, res) => {
           replyMessage = `Found ${products.length} matching component(s):`;
           formattedComponents = products.map(formatComponent);
         } else {
-          replyMessage = await generateGeneralReply(userMessage);
+          replyMessage = 'No matching spare parts found for your query. You can search using product names, models (e.g. GV3, GV4), dimensions, or part codes.';
           formattedComponents = [];
         }
 
