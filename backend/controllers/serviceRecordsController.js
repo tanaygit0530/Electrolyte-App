@@ -3,7 +3,23 @@ const ExcelJS = require('exceljs');
 const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { pool } = require('../config/neondb');
+
+/**
+ * In-memory registry for real-time background service sheet ingestion jobs
+ */
+const activeJobs = new Map();
+
+// Auto-cleanup jobs older than 1 hour to prevent memory leaks
+setInterval(() => {
+  const oneHourAgo = Date.now() - 3600000;
+  for (const [id, job] of activeJobs.entries()) {
+    if (job.completedAt && job.completedAt < oneHourAgo) {
+      activeJobs.delete(id);
+    }
+  }
+}, 600000);
 
 /**
  * Helper to parse various date formats from Excel/CSV
@@ -491,24 +507,17 @@ async function streamReadServiceFile(filePath, onRow, onHeaders) {
 }
 
 /**
- * 2. Bulk Upload Service Records (Admin App)
- * POST /api/service-records/upload
+/**
+ * Asynchronously process an uploaded service file in the background
  */
-exports.uploadServiceFile = async (req, res) => {
-  let filePath = null;
+async function processServiceFileJob(jobId, filePath, originalName, uploadedBy) {
+  const job = activeJobs.get(jobId);
+  if (!job) return;
+
+  const parseStart = Date.now();
   let client = null;
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded. Please provide an .xlsx, .xls, or .csv file.' });
-    }
-
-    filePath = req.file.path;
-    const originalName = req.file.originalname;
-    const uploadedBy = req.admin ? req.admin.email : 'Admin';
-    const parseStart = Date.now();
-
-    console.log(`Starting high-speed streaming ingestion for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)...`);
-
     const now = new Date();
     const currentYear = now.getFullYear();
     const sixtyDaysAgoMs = now.getTime() - (60 * 24 * 60 * 60 * 1000);
@@ -522,7 +531,9 @@ exports.uploadServiceFile = async (req, res) => {
     const foundEntries = [];
     const activeFoundRows = [];
 
-    // Stream pass 1: Perform 60-day audit in ~4-15 seconds, creating objects ONLY for the active 60-day records
+    job.stage = 'Auditing 60-day window and identifying repeat risks...';
+
+    // Stream pass 1: Perform 60-day audit, updating live job counters
     await streamReadServiceFile(
       filePath,
       (vals, rowNumber) => {
@@ -559,6 +570,13 @@ exports.uploadServiceFile = async (req, res) => {
         } else {
           olderThan60Days++;
         }
+
+        // Live progress update every 100 rows
+        if (totalRecords % 100 === 0) {
+          job.processedRows = totalRecords;
+          job.foundWithin60Days = foundWithin60Days;
+          job.olderThan60Days = olderThan60Days;
+        }
       },
       (headersVals) => {
         const cleaned = headersVals.map(cleanHeader);
@@ -566,16 +584,23 @@ exports.uploadServiceFile = async (req, res) => {
       }
     );
 
+    job.processedRows = totalRecords;
+    job.foundWithin60Days = foundWithin60Days;
+    job.olderThan60Days = olderThan60Days;
+
     if (totalRecords === 0) {
+      job.status = 'failed';
+      job.error = 'The uploaded file does not contain valid serial number records.';
+      job.completedAt = Date.now();
       if (filePath && fs.existsSync(filePath)) {
         try { fs.unlinkSync(filePath); } catch (e) {}
       }
-      return res.status(400).json({ error: 'The uploaded file does not contain valid serial number records.' });
+      return;
     }
 
-    console.log(`Audit complete in ${((Date.now() - parseStart) / 1000).toFixed(1)}s: Total ${totalRecords}, Found within 60 days: ${foundWithin60Days}, Older: ${olderThan60Days}`);
+    job.stage = 'Syncing repeat risk records to database...';
 
-    // Persist active found records and audit history log synchronously
+    // Persist active found records and audit history log synchronously in DB transaction
     client = await pool.connect();
     await client.query('BEGIN');
 
@@ -595,25 +620,24 @@ exports.uploadServiceFile = async (req, res) => {
     client.release();
     client = null;
 
-    // Return response to Admin App immediately (UI finishes loading in seconds!)
-    res.json({
-      success: true,
-      message: `File processed successfully. ${foundWithin60Days} repeat risk entries found within the active 60-day window out of ${totalRecords} records.`,
-      uploadId,
-      fileName: originalName,
-      summary: {
-        totalRecords,
-        foundWithin60Days,
-        olderThan60Days
-      },
-      foundEntries: foundEntries
-    });
+    // Mark job as completed - UI can now display final results immediately!
+    job.status = 'completed';
+    job.stage = 'Completed';
+    job.uploadId = uploadId;
+    job.summary = {
+      totalRecords,
+      foundWithin60Days,
+      olderThan60Days
+    };
+    job.foundEntries = foundEntries;
+    job.completedAt = Date.now();
+
+    console.log(`Job ${jobId} completed in ${((Date.now() - parseStart) / 1000).toFixed(1)}s: Total ${totalRecords}, Found within 60 days: ${foundWithin60Days}, Older: ${olderThan60Days}`);
 
     // Throttled background streaming of remaining historical records (with sequential queue and event-loop yielding)
     setTimeout(async () => {
       let bgClient = null;
       try {
-        console.log(`Background streaming ingestion starting for ${olderThan60Days} historical records...`);
         bgClient = await pool.connect();
         let histBatch = [];
         const BATCH_SIZE = 2500;
@@ -640,7 +664,6 @@ exports.uploadServiceFile = async (req, res) => {
               histBatch = [];
               queuePromise = queuePromise.then(async () => {
                 await insertBatchUnnest(bgClient, toInsert);
-                // Yield to event loop for 200ms so incoming HTTP requests are served with zero lag
                 await new Promise(r => setTimeout(r, 200));
               });
             }
@@ -656,30 +679,117 @@ exports.uploadServiceFile = async (req, res) => {
         }
 
         await queuePromise;
-        console.log(`Background historical records ingestion complete for "${originalName}".`);
       } catch (bgErr) {
-        console.error('Background historical streaming ingestion error:', bgErr);
+        console.error('Background historical streaming error for job', jobId, bgErr);
       } finally {
         if (bgClient) bgClient.release();
         if (filePath && fs.existsSync(filePath)) {
           try { fs.unlinkSync(filePath); } catch (e) {}
         }
       }
-    }, 3000);
+    }, 1000);
 
   } catch (error) {
     if (client) {
       try { await client.query('ROLLBACK'); } catch (rbErr) {}
+      client.release();
     }
-    console.error('Service Data Upload Error:', error);
+    console.error(`Job ${jobId} failed:`, error);
+    job.status = 'failed';
+    job.error = error.message || 'Failed to process service sheet.';
+    job.completedAt = Date.now();
     if (filePath && fs.existsSync(filePath)) {
       try { fs.unlinkSync(filePath); } catch (e) {}
     }
-    return res.status(500).json({ error: error.message || 'Failed to process service data upload' });
-  } finally {
-    if (client) {
-      client.release();
+  }
+}
+
+/**
+ * 2. Bulk Upload Service Records (Admin App)
+ * POST /api/service-records/upload
+ * Immediately accepts file upload and dispatches asynchronous background job
+ */
+exports.uploadServiceFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded. Please provide an .xlsx, .xls, or .csv file.' });
     }
+
+    const filePath = req.file.path;
+    const originalName = req.file.originalname;
+    const uploadedBy = req.admin ? req.admin.email : 'Admin';
+    const jobId = crypto.randomUUID();
+
+    const job = {
+      id: jobId,
+      status: 'processing',
+      stage: 'File uploaded. Initializing background audit...',
+      fileName: originalName,
+      fileSize: req.file.size,
+      uploadedBy,
+      startedAt: Date.now(),
+      completedAt: null,
+      processedRows: 0,
+      foundWithin60Days: 0,
+      olderThan60Days: 0,
+      summary: null,
+      foundEntries: [],
+      error: null
+    };
+
+    activeJobs.set(jobId, job);
+
+    console.log(`Accepted upload for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB). Dispatched job ${jobId}`);
+
+    // Immediately return 202 Accepted to Admin App so connection never times out!
+    res.status(202).json({
+      success: true,
+      jobId,
+      fileName: originalName,
+      message: 'File received. Background audit started.'
+    });
+
+    // Run job in background
+    setImmediate(() => {
+      processServiceFileJob(jobId, filePath, originalName, uploadedBy);
+    });
+
+  } catch (error) {
+    console.error('Service Data Upload Initiation Error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to initiate service upload' });
+  }
+};
+
+/**
+ * 2b. Poll Background Ingestion Job Status
+ * GET /api/service-records/job-status/:jobId
+ */
+exports.getJobStatus = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = activeJobs.get(jobId);
+    if (!job) {
+      return res.status(404).json({ success: false, error: 'Job not found or expired' });
+    }
+
+    return res.json({
+      success: true,
+      job: {
+        id: job.id,
+        status: job.status,
+        stage: job.stage,
+        fileName: job.fileName,
+        processedRows: job.processedRows,
+        foundWithin60Days: job.foundWithin60Days,
+        olderThan60Days: job.olderThan60Days,
+        summary: job.summary,
+        foundEntries: job.status === 'completed' ? job.foundEntries : [],
+        error: job.error
+      }
+    });
+  } catch (error) {
+    console.error('Get Job Status Error:', error);
+    return res.status(500).json({ error: 'Failed to retrieve job status' });
   }
 };
 

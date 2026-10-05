@@ -317,6 +317,25 @@ class ApiService {
     }
   }
 
+  /// Poll Background Service Data Ingestion Job Status
+  Future<Map<String, dynamic>> getServiceJobStatus(String jobId) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/api/service-records/job-status/$jobId',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 15),
+        ),
+      );
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to check background audit status: ${e.message}';
+      throw Exception(msg);
+    }
+  }
+
   /// Get Found Service Entries currently within 60 days
   Future<Map<String, dynamic>> getFoundServiceEntries({int limit = 100, int offset = 0, String? search}) async {
     try {

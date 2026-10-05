@@ -39,6 +39,9 @@ router.get('/history', serviceRecordsController.getUploadHistory);
 // List all found records currently within the 60-day window
 router.get('/found-entries', serviceRecordsController.getFoundEntries);
 
+// Background ingestion job status & live progress polling
+router.get('/job-status/:jobId', serviceRecordsController.getJobStatus);
+
 // Export CSV of found records
 router.get('/export-found', serviceRecordsController.exportFoundCsv);
 

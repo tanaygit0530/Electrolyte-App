@@ -16,6 +16,13 @@ class ServiceRecordsProvider extends ChangeNotifier {
   String? _statusText;
   String? _errorMessage;
 
+  // Real-time background job polling state
+  bool _isProcessingJob = false;
+  int _processedRows = 0;
+  int _liveFoundWithin60 = 0;
+  int _liveOlderThan60 = 0;
+  String? _stageText;
+
   ServiceUploadSummary? _summary;
   List<ServiceRecordEntry> _foundEntries = [];
   String _searchQuery = '';
@@ -29,6 +36,12 @@ class ServiceRecordsProvider extends ChangeNotifier {
   double get uploadProgress => _uploadProgress;
   String? get statusText => _statusText;
   String? get errorMessage => _errorMessage;
+
+  bool get isProcessingJob => _isProcessingJob;
+  int get processedRows => _processedRows;
+  int get liveFoundWithin60 => _liveFoundWithin60;
+  int get liveOlderThan60 => _liveOlderThan60;
+  String? get stageText => _stageText;
 
   ServiceUploadSummary? get summary => _summary;
   List<ServiceRecordEntry> get foundEntries => _foundEntries;
@@ -67,6 +80,11 @@ class ServiceRecordsProvider extends ChangeNotifier {
           _errorMessage = null;
           _summary = null;
           _foundEntries = [];
+          _isProcessingJob = false;
+          _processedRows = 0;
+          _liveFoundWithin60 = 0;
+          _liveOlderThan60 = 0;
+          _stageText = null;
           notifyListeners();
           return true;
         }
@@ -79,7 +97,7 @@ class ServiceRecordsProvider extends ChangeNotifier {
     }
   }
 
-  /// Upload file and execute 60-day service audit
+  /// Upload file and execute 60-day service audit with real-time progress polling
   Future<bool> uploadAndAudit() async {
     if (_filePath == null || _fileName == null) {
       _errorMessage = 'Please select a file first.';
@@ -88,6 +106,11 @@ class ServiceRecordsProvider extends ChangeNotifier {
     }
 
     _isUploading = true;
+    _isProcessingJob = false;
+    _processedRows = 0;
+    _liveFoundWithin60 = 0;
+    _liveOlderThan60 = 0;
+    _stageText = null;
     _uploadProgress = 0.0;
     _statusText = 'Uploading $_fileName...';
     _errorMessage = null;
@@ -101,7 +124,7 @@ class ServiceRecordsProvider extends ChangeNotifier {
           if (total > 0) {
             _uploadProgress = sent / total;
             if (_uploadProgress >= 1.0) {
-              _statusText = 'File uploaded (100%). Auditing 60-day window and syncing database... Please wait.';
+              _statusText = 'File uploaded 100%. Starting background audit...';
             } else {
               _statusText = 'Uploading: ${(_uploadProgress * 100).toStringAsFixed(1)}%';
             }
@@ -110,16 +133,56 @@ class ServiceRecordsProvider extends ChangeNotifier {
         },
       );
 
-      final summaryMap = response['summary'] as Map<String, dynamic>?;
-      if (summaryMap != null) {
-        _summary = ServiceUploadSummary.fromJson(summaryMap);
-      }
+      final jobId = response['jobId'] as String?;
+      if (jobId != null && jobId.isNotEmpty) {
+        // Asynchronous Job Flow: Poll status with real-time counters
+        _isProcessingJob = true;
+        _stageText = 'Initializing audit on cloud server...';
+        notifyListeners();
 
-      final entriesList = response['foundEntries'] as List<dynamic>?;
-      if (entriesList != null) {
-        _foundEntries = entriesList.map((e) => ServiceRecordEntry.fromJson(e as Map<String, dynamic>)).toList();
+        bool isDone = false;
+        while (!isDone) {
+          await Future.delayed(const Duration(milliseconds: 1200));
+          final statusRes = await _apiService.getServiceJobStatus(jobId);
+          final job = statusRes['job'] as Map<String, dynamic>? ?? {};
+
+          final status = job['status'] as String? ?? 'processing';
+          _stageText = job['stage'] as String? ?? 'Auditing service records...';
+          _processedRows = (job['processedRows'] as num?)?.toInt() ?? _processedRows;
+          _liveFoundWithin60 = (job['foundWithin60Days'] as num?)?.toInt() ?? _liveFoundWithin60;
+          _liveOlderThan60 = (job['olderThan60Days'] as num?)?.toInt() ?? _liveOlderThan60;
+          notifyListeners();
+
+          if (status == 'completed') {
+            isDone = true;
+            final summaryMap = job['summary'] as Map<String, dynamic>?;
+            if (summaryMap != null) {
+              _summary = ServiceUploadSummary.fromJson(summaryMap);
+            }
+            final entriesList = job['foundEntries'] as List<dynamic>?;
+            if (entriesList != null) {
+              _foundEntries = entriesList.map((e) => ServiceRecordEntry.fromJson(e as Map<String, dynamic>)).toList();
+            } else {
+              _foundEntries = [];
+            }
+          } else if (status == 'failed') {
+            isDone = true;
+            final err = job['error'] as String? ?? 'Service audit failed on cloud server.';
+            throw Exception(err);
+          }
+        }
       } else {
-        _foundEntries = [];
+        // Fallback for legacy direct response
+        final summaryMap = response['summary'] as Map<String, dynamic>?;
+        if (summaryMap != null) {
+          _summary = ServiceUploadSummary.fromJson(summaryMap);
+        }
+        final entriesList = response['foundEntries'] as List<dynamic>?;
+        if (entriesList != null) {
+          _foundEntries = entriesList.map((e) => ServiceRecordEntry.fromJson(e as Map<String, dynamic>)).toList();
+        } else {
+          _foundEntries = [];
+        }
       }
 
       return true;
@@ -128,6 +191,7 @@ class ServiceRecordsProvider extends ChangeNotifier {
       return false;
     } finally {
       _isUploading = false;
+      _isProcessingJob = false;
       _statusText = null;
       notifyListeners();
     }
