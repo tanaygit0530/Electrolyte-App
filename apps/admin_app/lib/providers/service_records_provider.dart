@@ -101,7 +101,7 @@ class ServiceRecordsProvider extends ChangeNotifier {
           if (total > 0) {
             _uploadProgress = sent / total;
             if (_uploadProgress >= 1.0) {
-              _statusText = 'File uploaded (100%). Auditing 60-day window and syncing records...';
+              _statusText = 'File uploaded (100%). Auditing 60-day window and syncing database... Please wait.';
             } else {
               _statusText = 'Uploading: ${(_uploadProgress * 100).toStringAsFixed(1)}%';
             }

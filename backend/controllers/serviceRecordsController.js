@@ -309,30 +309,63 @@ function buildColMap(headers) {
 }
 
 /**
- * Extract and normalize a single row into standard record object
+ * Fast check if an end_date value is within the 60-day window [now - 60 days, now].
+ * Returns { isWithin60: boolean, parsedDate: Date|null, displayDate: string }
  */
-function extractRowRecord(vals, colMap, now) {
-  if (!vals || vals.length === 0) return null;
+function evaluateEndDate60Days(val, nowMs, sixtyDaysAgoMs, currentYear) {
+  if (!val) {
+    return { isWithin60: false, parsedDate: null, displayDate: 'N/A' };
+  }
+
+  let parsed = null;
+  let display = 'N/A';
+
+  if (val instanceof Date) {
+    parsed = isNaN(val.getTime()) ? null : val;
+    display = parsed ? parsed.toISOString().split('T')[0] : 'N/A';
+  } else if (typeof val === 'number') {
+    const t = Math.round((val - 25569) * 86400 * 1000);
+    parsed = isNaN(t) ? null : new Date(t);
+    display = parsed ? parsed.toISOString().split('T')[0] : String(val);
+  } else {
+    const str = String(val).trim();
+    if (!str) {
+      return { isWithin60: false, parsedDate: null, displayDate: 'N/A' };
+    }
+    display = str;
+
+    // Fast check for DD/MM/YYYY or DD-MM-YYYY
+    const c2 = str.charCodeAt(2);
+    if ((c2 === 47 || c2 === 45) && (str.charCodeAt(5) === 47 || str.charCodeAt(5) === 45)) {
+      const year = parseInt(str.substring(6, 10), 10);
+      // If year is older than currentYear - 1 (e.g. 2021-2024 when now is 2026), it's definitely older than 60 days!
+      if (!isNaN(year) && year < currentYear - 1) {
+        return { isWithin60: false, parsedDate: null, displayDate: display };
+      }
+    }
+
+    parsed = parseDateValue(str);
+    if (!display && parsed) {
+      display = parsed.toISOString().split('T')[0];
+    }
+  }
+
+  if (!parsed) {
+    return { isWithin60: false, parsedDate: null, displayDate: display };
+  }
+
+  const t = parsed.getTime();
+  const isWithin60 = (t >= sixtyDaysAgoMs && t <= nowMs);
+  return { isWithin60, parsedDate: parsed, displayDate: display };
+}
+
+/**
+ * Extract full 35-column record object (only called for rows being saved to database)
+ */
+function extractFullRecord(vals, colMap, serialNo, parsedEndDate, displayEndDate) {
   const toStr = (v) => (v !== null && v !== undefined && String(v).trim() !== '') ? String(v).trim() : null;
 
-  const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
-  const serialNo = toStr(rawSerial);
-  if (!serialNo || serialNo === 'null' || serialNo === 'undefined' || serialNo.toUpperCase() === 'NO BARCODE') {
-    return null;
-  }
-
-  const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
-  const parsedEndDate = parseDateValue(rawEndDate);
-  const rawClosedDate = colMap.closedDate !== -1 ? vals[colMap.closedDate] : vals[35];
-
-  let displayEndDate = 'N/A';
-  if (rawEndDate && typeof rawEndDate === 'string') {
-    displayEndDate = rawEndDate.trim();
-  } else if (parsedEndDate) {
-    displayEndDate = parsedEndDate.toISOString().split('T')[0];
-  }
-
-  const recordObj = {
+  return {
     case_number: toStr(colMap.case !== -1 ? vals[colMap.case] : vals[1]),
     created_date: parseDateValue(colMap.createdDate !== -1 ? vals[colMap.createdDate] : vals[2]),
     work_order_line_item: toStr(colMap.workOrder !== -1 ? vals[colMap.workOrder] : vals[3]),
@@ -365,20 +398,8 @@ function extractRowRecord(vals, colMap, now) {
     serial_no: serialNo,
     replacement_serial_no: toStr(colMap.replSerial !== -1 ? vals[colMap.replSerial] : vals[32]),
     type_of_resolution: toStr(colMap.resolution !== -1 ? vals[colMap.resolution] : vals[34]),
-    closed_date: toStr(rawClosedDate)
+    closed_date: toStr(colMap.closedDate !== -1 ? vals[colMap.closedDate] : vals[35])
   };
-
-  let isWithin60 = false;
-  let daysAgo = null;
-  if (parsedEndDate) {
-    const timeDiff = now.getTime() - parsedEndDate.getTime();
-    daysAgo = Math.round(timeDiff / (24 * 60 * 60 * 1000));
-    if (daysAgo >= 0 && daysAgo <= 60) {
-      isWithin60 = true;
-    }
-  }
-
-  return { recordObj, isWithin60, daysAgo, serialNo, displayEndDate };
 }
 
 /**
@@ -486,9 +507,13 @@ exports.uploadServiceFile = async (req, res) => {
     const uploadedBy = req.admin ? req.admin.email : 'Admin';
     const parseStart = Date.now();
 
-    console.log(`Starting memory-efficient streaming ingestion for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)...`);
+    console.log(`Starting high-speed streaming ingestion for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)...`);
 
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const sixtyDaysAgoMs = now.getTime() - (60 * 24 * 60 * 60 * 1000);
+    const nowMs = now.getTime();
+
     let colMap = null;
     let totalRecords = 0;
     let foundWithin60Days = 0;
@@ -497,29 +522,40 @@ exports.uploadServiceFile = async (req, res) => {
     const foundEntries = [];
     const activeFoundRows = [];
 
-    // Stream pass 1: Perform 60-day audit in ~4-7 seconds, collecting ONLY active 60-day records in memory
+    // Stream pass 1: Perform 60-day audit in ~4-15 seconds, creating objects ONLY for the active 60-day records
     await streamReadServiceFile(
       filePath,
       (vals, rowNumber) => {
         if (!colMap) return;
-        const result = extractRowRecord(vals, colMap, now);
-        if (!result) return;
+        const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
+        if (!rawSerial) return;
+        const serialStr = String(rawSerial).trim();
+        if (!serialStr || serialStr === 'null' || serialStr === 'undefined' || serialStr.toUpperCase() === 'NO BARCODE') {
+          return;
+        }
 
         totalRecords++;
-        if (result.isWithin60) {
+
+        const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
+        const { isWithin60, parsedDate, displayDate } = evaluateEndDate60Days(rawEndDate, nowMs, sixtyDaysAgoMs, currentYear);
+
+        if (isWithin60) {
           foundWithin60Days++;
+          const rec = extractFullRecord(vals, colMap, serialStr, parsedDate, displayDate);
+          activeFoundRows.push(rec);
+
+          const daysAgo = Math.round((nowMs - parsedDate.getTime()) / 86400000);
           foundEntries.push({
-            serialNumber: result.serialNo,
-            date: result.displayEndDate,
-            endDate: result.displayEndDate,
-            daysAgo: result.daysAgo,
-            caseNumber: result.recordObj.case_number,
-            customerName: result.recordObj.customer_name,
-            complaint: result.recordObj.customer_complaint,
-            repair: result.recordObj.repair,
-            status: result.recordObj.wo_status
+            serialNumber: serialStr,
+            date: displayDate,
+            endDate: displayDate,
+            daysAgo: daysAgo,
+            caseNumber: rec.case_number,
+            customerName: rec.customer_name,
+            complaint: rec.customer_complaint,
+            repair: rec.repair,
+            status: rec.wo_status
           });
-          activeFoundRows.push(result.recordObj);
         } else {
           olderThan60Days++;
         }
@@ -573,8 +609,8 @@ exports.uploadServiceFile = async (req, res) => {
       foundEntries: foundEntries
     });
 
-    // Background streaming of remaining historical records (chunks of 2,000 via UNNEST, minimal memory)
-    setImmediate(async () => {
+    // Throttled background streaming of remaining historical records (with sequential queue and event-loop yielding)
+    setTimeout(async () => {
       let bgClient = null;
       try {
         console.log(`Background streaming ingestion starting for ${olderThan60Days} historical records...`);
@@ -587,14 +623,26 @@ exports.uploadServiceFile = async (req, res) => {
           filePath,
           (vals) => {
             if (!colMap) return;
-            const result = extractRowRecord(vals, colMap, now);
-            if (!result || result.isWithin60) return; // already inserted in pass 1
+            const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
+            if (!rawSerial) return;
+            const serialStr = String(rawSerial).trim();
+            if (!serialStr || serialStr === 'null' || serialStr === 'undefined' || serialStr.toUpperCase() === 'NO BARCODE') return;
 
-            histBatch.push(result.recordObj);
+            const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
+            const { isWithin60, parsedDate, displayDate } = evaluateEndDate60Days(rawEndDate, nowMs, sixtyDaysAgoMs, currentYear);
+            if (isWithin60) return; // already inserted in pass 1
+
+            const rec = extractFullRecord(vals, colMap, serialStr, parsedDate, displayDate);
+            histBatch.push(rec);
+
             if (histBatch.length >= BATCH_SIZE) {
               const toInsert = histBatch;
               histBatch = [];
-              queuePromise = queuePromise.then(() => insertBatchUnnest(bgClient, toInsert));
+              queuePromise = queuePromise.then(async () => {
+                await insertBatchUnnest(bgClient, toInsert);
+                // Yield to event loop for 200ms so incoming HTTP requests are served with zero lag
+                await new Promise(r => setTimeout(r, 200));
+              });
             }
           }
         );
@@ -602,7 +650,9 @@ exports.uploadServiceFile = async (req, res) => {
         if (histBatch.length > 0) {
           const finalBatch = histBatch;
           histBatch = [];
-          queuePromise = queuePromise.then(() => insertBatchUnnest(bgClient, finalBatch));
+          queuePromise = queuePromise.then(async () => {
+            await insertBatchUnnest(bgClient, finalBatch);
+          });
         }
 
         await queuePromise;
@@ -615,7 +665,7 @@ exports.uploadServiceFile = async (req, res) => {
           try { fs.unlinkSync(filePath); } catch (e) {}
         }
       }
-    });
+    }, 3000);
 
   } catch (error) {
     if (client) {
