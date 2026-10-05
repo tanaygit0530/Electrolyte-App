@@ -1,4 +1,6 @@
 const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
+const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/neondb');
@@ -259,6 +261,215 @@ async function insertBatchUnnest(client, batchRows) {
 }
 
 /**
+ * Helper to build column index map from header values
+ */
+function buildColMap(headers) {
+  const getColIdx = (...aliases) => {
+    for (const alias of aliases) {
+      const idx = headers.indexOf(alias);
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+
+  return {
+    case: getColIdx('casenumber', 'case'),
+    createdDate: getColIdx('createddate', 'date', 'servicedate'),
+    workOrder: getColIdx('workorderlineitemnumber', 'workorder'),
+    customer: getColIdx('customername', 'customer'),
+    territory: getColIdx('serviceterritoryname', 'serviceterritory', 'territory'),
+    street: getColIdx('street'),
+    city: getColIdx('city'),
+    state: getColIdx('stateprovince', 'state'),
+    zip: getColIdx('zippostalcode', 'zipcode', 'zip', 'postalcode'),
+    complaint: getColIdx('customercomplaint', 'complaint'),
+    status: getColIdx('wostatus', 'status'),
+    symptom: getColIdx('symptom'),
+    defect: getColIdx('defect'),
+    repair: getColIdx('repair'),
+    endDate: getColIdx('enddate'),
+    days: getColIdx('days'),
+    prodCode: getColIdx('productcode'),
+    prodName: getColIdx('productname'),
+    prodDesc: getColIdx('productdescription', 'description'),
+    prodType: getColIdx('producttype'),
+    prodSubType: getColIdx('productsubtype'),
+    warranty: getColIdx('warrantystatus'),
+    typeOfWO: getColIdx('typeofworkorder'),
+    lineItemStatus: getColIdx('lineitemstatus'),
+    sdr: getColIdx('sdrstatus'),
+    invoiceDate: getColIdx('invoicedate'),
+    techName: getColIdx('technicianname', 'technician'),
+    techRemarks: getColIdx('technicianremarks', 'remarks'),
+    serial: getColIdx('serialno', 'serialnumber', 'serial'),
+    replSerial: getColIdx('productserialnumberreplacement', 'replacementserial', 'replacementserialno'),
+    resolution: getColIdx('typeofresolution'),
+    closedDate: getColIdx('workordercloseddate', 'closeddate')
+  };
+}
+
+/**
+ * Extract and normalize a single row into standard record object
+ */
+function extractRowRecord(vals, colMap, now) {
+  if (!vals || vals.length === 0) return null;
+  const toStr = (v) => (v !== null && v !== undefined && String(v).trim() !== '') ? String(v).trim() : null;
+
+  const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
+  const serialNo = toStr(rawSerial);
+  if (!serialNo || serialNo === 'null' || serialNo === 'undefined' || serialNo.toUpperCase() === 'NO BARCODE') {
+    return null;
+  }
+
+  const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
+  const parsedEndDate = parseDateValue(rawEndDate);
+  const rawClosedDate = colMap.closedDate !== -1 ? vals[colMap.closedDate] : vals[35];
+
+  let displayEndDate = 'N/A';
+  if (rawEndDate && typeof rawEndDate === 'string') {
+    displayEndDate = rawEndDate.trim();
+  } else if (parsedEndDate) {
+    displayEndDate = parsedEndDate.toISOString().split('T')[0];
+  }
+
+  const recordObj = {
+    case_number: toStr(colMap.case !== -1 ? vals[colMap.case] : vals[1]),
+    created_date: parseDateValue(colMap.createdDate !== -1 ? vals[colMap.createdDate] : vals[2]),
+    work_order_line_item: toStr(colMap.workOrder !== -1 ? vals[colMap.workOrder] : vals[3]),
+    customer_name: toStr(colMap.customer !== -1 ? vals[colMap.customer] : vals[4]),
+    service_territory: toStr(colMap.territory !== -1 ? vals[colMap.territory] : vals[5]),
+    street: toStr(colMap.street !== -1 ? vals[colMap.street] : vals[6]),
+    city: toStr(colMap.city !== -1 ? vals[colMap.city] : vals[7]),
+    state: toStr(colMap.state !== -1 ? vals[colMap.state] : vals[8]),
+    zip_code: toStr(colMap.zip !== -1 ? vals[colMap.zip] : vals[9]),
+    customer_complaint: toStr(colMap.complaint !== -1 ? vals[colMap.complaint] : vals[10]),
+    wo_status: toStr(colMap.status !== -1 ? vals[colMap.status] : vals[11]),
+    symptom: toStr(colMap.symptom !== -1 ? vals[colMap.symptom] : vals[12]),
+    defect: toStr(colMap.defect !== -1 ? vals[colMap.defect] : vals[13]),
+    repair: toStr(colMap.repair !== -1 ? vals[colMap.repair] : vals[14]),
+    end_date: displayEndDate,
+    parsed_end_date: parsedEndDate,
+    days: toStr(colMap.days !== -1 ? vals[colMap.days] : vals[16]),
+    product_code: toStr(colMap.prodCode !== -1 ? vals[colMap.prodCode] : vals[17]),
+    product_name: toStr(colMap.prodName !== -1 ? vals[colMap.prodName] : vals[18]),
+    product_description: toStr(colMap.prodDesc !== -1 ? vals[colMap.prodDesc] : vals[19]),
+    product_type: toStr(colMap.prodType !== -1 ? vals[colMap.prodType] : vals[20]),
+    product_sub_type: toStr(colMap.prodSubType !== -1 ? vals[colMap.prodSubType] : vals[21]),
+    warranty_status: toStr(colMap.warranty !== -1 ? vals[colMap.warranty] : vals[22]),
+    type_of_work_order: toStr(colMap.typeOfWO !== -1 ? vals[colMap.typeOfWO] : vals[23]),
+    line_item_status: toStr(colMap.lineItemStatus !== -1 ? vals[colMap.lineItemStatus] : vals[24]),
+    sdr_status: toStr(colMap.sdr !== -1 ? vals[colMap.sdr] : vals[25]),
+    invoice_date: toStr(colMap.invoiceDate !== -1 ? vals[colMap.invoiceDate] : vals[26]),
+    technician_name: toStr(colMap.techName !== -1 ? vals[colMap.techName] : vals[27]),
+    technician_remarks: toStr(colMap.techRemarks !== -1 ? vals[colMap.techRemarks] : vals[28]),
+    serial_no: serialNo,
+    replacement_serial_no: toStr(colMap.replSerial !== -1 ? vals[colMap.replSerial] : vals[32]),
+    type_of_resolution: toStr(colMap.resolution !== -1 ? vals[colMap.resolution] : vals[34]),
+    closed_date: toStr(rawClosedDate)
+  };
+
+  let isWithin60 = false;
+  let daysAgo = null;
+  if (parsedEndDate) {
+    const timeDiff = now.getTime() - parsedEndDate.getTime();
+    daysAgo = Math.round(timeDiff / (24 * 60 * 60 * 1000));
+    if (daysAgo >= 0 && daysAgo <= 60) {
+      isWithin60 = true;
+    }
+  }
+
+  return { recordObj, isWithin60, daysAgo, serialNo, displayEndDate };
+}
+
+/**
+ * Memory-efficient streaming file reader for .xlsx and .csv files.
+ */
+async function streamReadServiceFile(filePath, onRow, onHeaders) {
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (ext === '.csv') {
+    const rl = readline.createInterface({
+      input: fs.createReadStream(filePath),
+      crlfDelay: Infinity
+    });
+
+    let rowNum = 0;
+    for await (const line of rl) {
+      if (!line || !line.trim()) continue;
+      rowNum++;
+      const parsedValues = [null]; // 1-indexed to match ExcelJS
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          parsedValues.push(cur.trim());
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      parsedValues.push(cur.trim());
+
+      if (rowNum === 1) {
+        if (onHeaders) onHeaders(parsedValues);
+      } else {
+        await onRow(parsedValues, rowNum);
+      }
+    }
+    return;
+  }
+
+  // .xlsx / .xls: Use ExcelJS stream reader (maintains low heap < 180MB)
+  return new Promise((resolve, reject) => {
+    let isFirstSheet = true;
+    let streamAborted = false;
+
+    const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
+      entries: 'emit',
+      worksheets: 'emit',
+      sharedStrings: 'cache',
+      styles: 'ignore'
+    });
+
+    workbookReader.on('worksheet', (worksheet) => {
+      if (!isFirstSheet) return;
+      isFirstSheet = false;
+
+      worksheet.on('row', (row) => {
+        try {
+          if (row.number === 1) {
+            if (onHeaders) onHeaders(row.values);
+          } else {
+            onRow(row.values, row.number);
+          }
+        } catch (err) {
+          streamAborted = true;
+          reject(err);
+        }
+      });
+    });
+
+    workbookReader.on('end', () => {
+      if (!streamAborted) resolve();
+    });
+
+    workbookReader.on('error', (err) => {
+      reject(err);
+    });
+
+    workbookReader.read();
+  });
+}
+
+/**
  * 2. Bulk Upload Service Records (Admin App)
  * POST /api/service-records/upload
  */
@@ -273,172 +484,69 @@ exports.uploadServiceFile = async (req, res) => {
     filePath = req.file.path;
     const originalName = req.file.originalname;
     const uploadedBy = req.admin ? req.admin.email : 'Admin';
-
-    console.log(`Starting bulk service data ingestion for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)...`);
     const parseStart = Date.now();
 
-    // Parse workbook with SheetJS (dense mode for fast memory-efficient access)
-    const workbook = XLSX.readFile(filePath, { cellDates: true, dense: true });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-
-    if (!rows || rows.length < 2) {
-      return res.status(400).json({ error: 'The uploaded file is empty or does not contain data rows.' });
-    }
-
-    const headers = rows[0].map(cleanHeader);
-    console.log(`Parsed ${rows.length - 1} rows in ${(Date.now() - parseStart) / 1000}s. Mapping columns...`);
-
-    // Helper to find column index from potential header names
-    const getColIdx = (...aliases) => {
-      for (const alias of aliases) {
-        const idx = headers.indexOf(alias);
-        if (idx !== -1) return idx;
-      }
-      return -1;
-    };
-
-    const colCase = getColIdx('casenumber', 'case');
-    const colCreatedDate = getColIdx('createddate', 'date', 'servicedate');
-    const colWorkOrder = getColIdx('workorderlineitemnumber', 'workorder');
-    const colCustomer = getColIdx('customername', 'customer');
-    const colTerritory = getColIdx('serviceterritoryname', 'serviceterritory', 'territory');
-    const colStreet = getColIdx('street');
-    const colCity = getColIdx('city');
-    const colState = getColIdx('stateprovince', 'state');
-    const colZip = getColIdx('zippostalcode', 'zipcode', 'zip', 'postalcode');
-    const colComplaint = getColIdx('customercomplaint', 'complaint');
-    const colStatus = getColIdx('wostatus', 'status');
-    const colSymptom = getColIdx('symptom');
-    const colDefect = getColIdx('defect');
-    const colRepair = getColIdx('repair');
-    const colEndDate = getColIdx('enddate');
-    const colDays = getColIdx('days');
-    const colProdCode = getColIdx('productcode');
-    const colProdName = getColIdx('productname');
-    const colProdDesc = getColIdx('productdescription', 'description');
-    const colProdType = getColIdx('producttype');
-    const colProdSubType = getColIdx('productsubtype');
-    const colWarranty = getColIdx('warrantystatus');
-    const colTypeOfWO = getColIdx('typeofworkorder');
-    const colLineItemStatus = getColIdx('lineitemstatus');
-    const colSdr = getColIdx('sdrstatus');
-    const colInvoiceDate = getColIdx('invoicedate');
-    const colTechName = getColIdx('technicianname', 'technician');
-    const colTechRemarks = getColIdx('technicianremarks', 'remarks');
-    const colSerial = getColIdx('serialno', 'serialnumber', 'serial');
-    const colReplSerial = getColIdx('productserialnumberreplacement', 'replacementserial', 'replacementserialno');
-    const colResolution = getColIdx('typeofresolution');
-    const colClosedDate = getColIdx('workordercloseddate', 'closeddate');
+    console.log(`Starting memory-efficient streaming ingestion for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)...`);
 
     const now = new Date();
+    let colMap = null;
     let totalRecords = 0;
     let foundWithin60Days = 0;
     let olderThan60Days = 0;
 
     const foundEntries = [];
     const activeFoundRows = [];
-    const historicalRows = [];
 
-    const toStr = (v) => (v !== null && v !== undefined && String(v).trim() !== '') ? String(v).trim() : null;
+    // Stream pass 1: Perform 60-day audit in ~4-7 seconds, collecting ONLY active 60-day records in memory
+    await streamReadServiceFile(
+      filePath,
+      (vals, rowNumber) => {
+        if (!colMap) return;
+        const result = extractRowRecord(vals, colMap, now);
+        if (!result) return;
 
-    // Process all rows in memory (sub-second audit execution)
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row || row.length === 0) continue;
-
-      const rawSerial = colSerial !== -1 ? row[colSerial] : row[30];
-      const serialNo = toStr(rawSerial);
-
-      // Skip rows with completely empty or null serial
-      if (!serialNo || serialNo === 'null' || serialNo === 'undefined') {
-        continue;
-      }
-
-      totalRecords++;
-
-      const createdDateVal = parseDateValue(colCreatedDate !== -1 ? row[colCreatedDate] : row[1]);
-      const rawEndDate = colEndDate !== -1 ? row[colEndDate] : row[14];
-      const parsedEndDate = parseDateValue(rawEndDate);
-      const rawClosedDate = colClosedDate !== -1 ? row[colClosedDate] : row[34];
-
-      const recordObj = {
-        case_number: toStr(colCase !== -1 ? row[colCase] : row[0]),
-        created_date: createdDateVal,
-        work_order_line_item: toStr(colWorkOrder !== -1 ? row[colWorkOrder] : row[2]),
-        customer_name: toStr(colCustomer !== -1 ? row[colCustomer] : row[3]),
-        service_territory: toStr(colTerritory !== -1 ? row[colTerritory] : row[4]),
-        street: toStr(colStreet !== -1 ? row[colStreet] : row[5]),
-        city: toStr(colCity !== -1 ? row[colCity] : row[6]),
-        state: toStr(colState !== -1 ? row[colState] : row[7]),
-        zip_code: toStr(colZip !== -1 ? row[colZip] : row[8]),
-        customer_complaint: toStr(colComplaint !== -1 ? row[colComplaint] : row[9]),
-        wo_status: toStr(colStatus !== -1 ? row[colStatus] : row[10]),
-        symptom: toStr(colSymptom !== -1 ? row[colSymptom] : row[11]),
-        defect: toStr(colDefect !== -1 ? row[colDefect] : row[12]),
-        repair: toStr(colRepair !== -1 ? row[colRepair] : row[13]),
-        end_date: toStr(rawEndDate),
-        parsed_end_date: parsedEndDate,
-        days: toStr(colDays !== -1 ? row[colDays] : row[15]),
-        product_code: toStr(colProdCode !== -1 ? row[colProdCode] : row[16]),
-        product_name: toStr(colProdName !== -1 ? row[colProdName] : row[17]),
-        product_description: toStr(colProdDesc !== -1 ? row[colProdDesc] : row[18]),
-        product_type: toStr(colProdType !== -1 ? row[colProdType] : row[19]),
-        product_sub_type: toStr(colProdSubType !== -1 ? row[colProdSubType] : row[20]),
-        warranty_status: toStr(colWarranty !== -1 ? row[colWarranty] : row[21]),
-        type_of_work_order: toStr(colTypeOfWO !== -1 ? row[colTypeOfWO] : row[22]),
-        line_item_status: toStr(colLineItemStatus !== -1 ? row[colLineItemStatus] : row[23]),
-        sdr_status: toStr(colSdr !== -1 ? row[colSdr] : row[24]),
-        invoice_date: toStr(colInvoiceDate !== -1 ? row[colInvoiceDate] : row[25]),
-        technician_name: toStr(colTechName !== -1 ? row[colTechName] : row[26]),
-        technician_remarks: toStr(colTechRemarks !== -1 ? row[colTechRemarks] : row[27]),
-        serial_no: serialNo,
-        replacement_serial_no: toStr(colReplSerial !== -1 ? row[colReplSerial] : row[31]),
-        type_of_resolution: toStr(colResolution !== -1 ? row[colResolution] : row[33]),
-        closed_date: toStr(rawClosedDate)
-      };
-
-      // 60-Day Audit logic: compare strictly with End Date
-      if (parsedEndDate) {
-        const timeDiff = now.getTime() - parsedEndDate.getTime();
-        const daysAgo = Math.round(timeDiff / (24 * 60 * 60 * 1000));
-        if (daysAgo >= 0 && daysAgo <= 60) {
+        totalRecords++;
+        if (result.isWithin60) {
           foundWithin60Days++;
           foundEntries.push({
-            serialNumber: serialNo,
-            date: rawEndDate ? String(rawEndDate).trim() : parsedEndDate.toISOString().split('T')[0],
-            endDate: rawEndDate ? String(rawEndDate).trim() : parsedEndDate.toISOString().split('T')[0],
-            daysAgo: daysAgo,
-            caseNumber: recordObj.case_number,
-            customerName: recordObj.customer_name,
-            complaint: recordObj.customer_complaint,
-            repair: recordObj.repair,
-            status: recordObj.wo_status
+            serialNumber: result.serialNo,
+            date: result.displayEndDate,
+            endDate: result.displayEndDate,
+            daysAgo: result.daysAgo,
+            caseNumber: result.recordObj.case_number,
+            customerName: result.recordObj.customer_name,
+            complaint: result.recordObj.customer_complaint,
+            repair: result.recordObj.repair,
+            status: result.recordObj.wo_status
           });
-          activeFoundRows.push(recordObj);
+          activeFoundRows.push(result.recordObj);
         } else {
           olderThan60Days++;
-          historicalRows.push(recordObj);
         }
-      } else {
-        olderThan60Days++;
-        historicalRows.push(recordObj);
+      },
+      (headersVals) => {
+        const cleaned = headersVals.map(cleanHeader);
+        colMap = buildColMap(cleaned);
       }
+    );
+
+    if (totalRecords === 0) {
+      if (filePath && fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (e) {}
+      }
+      return res.status(400).json({ error: 'The uploaded file does not contain valid serial number records.' });
     }
 
-    console.log(`Audit complete: Total ${totalRecords}, Found within 60 days: ${foundWithin60Days}, Older: ${olderThan60Days}`);
+    console.log(`Audit complete in ${((Date.now() - parseStart) / 1000).toFixed(1)}s: Total ${totalRecords}, Found within 60 days: ${foundWithin60Days}, Older: ${olderThan60Days}`);
 
     // Persist active found records and audit history log synchronously
     client = await pool.connect();
     await client.query('BEGIN');
 
-    // 1. Immediately insert active 60-day records (< 0.5s via UNNEST)
     if (activeFoundRows.length > 0) {
       await insertBatchUnnest(client, activeFoundRows);
     }
 
-    // 2. Save upload history entry
     const historyRes = await client.query(`
       INSERT INTO service_upload_history (
         file_name, uploaded_by, total_records, found_within_60_days, older_than_60_days
@@ -451,10 +559,10 @@ exports.uploadServiceFile = async (req, res) => {
     client.release();
     client = null;
 
-    // 3. Immediately return response to Admin App! Eliminates spinning & UI timeout!
+    // Return response to Admin App immediately (UI finishes loading in seconds!)
     res.json({
       success: true,
-      message: `File processed successfully. ${foundWithin60Days} entries found within the active 60-day window out of ${totalRecords} records.`,
+      message: `File processed successfully. ${foundWithin60Days} repeat risk entries found within the active 60-day window out of ${totalRecords} records.`,
       uploadId,
       fileName: originalName,
       summary: {
@@ -465,20 +573,42 @@ exports.uploadServiceFile = async (req, res) => {
       foundEntries: foundEntries
     });
 
-    // 4. Ingest remaining historical records asynchronously in the background using UNNEST (5,000 per batch)
+    // Background streaming of remaining historical records (chunks of 2,000 via UNNEST, minimal memory)
     setImmediate(async () => {
       let bgClient = null;
       try {
-        console.log(`Background ingestion starting for ${historicalRows.length} historical records...`);
+        console.log(`Background streaming ingestion starting for ${olderThan60Days} historical records...`);
         bgClient = await pool.connect();
-        const BG_BATCH_SIZE = 5000;
-        for (let b = 0; b < historicalRows.length; b += BG_BATCH_SIZE) {
-          const chunk = historicalRows.slice(b, b + BG_BATCH_SIZE);
-          await insertBatchUnnest(bgClient, chunk);
+        let histBatch = [];
+        const BATCH_SIZE = 2500;
+        let queuePromise = Promise.resolve();
+
+        await streamReadServiceFile(
+          filePath,
+          (vals) => {
+            if (!colMap) return;
+            const result = extractRowRecord(vals, colMap, now);
+            if (!result || result.isWithin60) return; // already inserted in pass 1
+
+            histBatch.push(result.recordObj);
+            if (histBatch.length >= BATCH_SIZE) {
+              const toInsert = histBatch;
+              histBatch = [];
+              queuePromise = queuePromise.then(() => insertBatchUnnest(bgClient, toInsert));
+            }
+          }
+        );
+
+        if (histBatch.length > 0) {
+          const finalBatch = histBatch;
+          histBatch = [];
+          queuePromise = queuePromise.then(() => insertBatchUnnest(bgClient, finalBatch));
         }
-        console.log(`Background ingestion complete for ${historicalRows.length} historical records.`);
+
+        await queuePromise;
+        console.log(`Background historical records ingestion complete for "${originalName}".`);
       } catch (bgErr) {
-        console.error('Background historical records ingestion error:', bgErr);
+        console.error('Background historical streaming ingestion error:', bgErr);
       } finally {
         if (bgClient) bgClient.release();
         if (filePath && fs.existsSync(filePath)) {
@@ -492,6 +622,9 @@ exports.uploadServiceFile = async (req, res) => {
       try { await client.query('ROLLBACK'); } catch (rbErr) {}
     }
     console.error('Service Data Upload Error:', error);
+    if (filePath && fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath); } catch (e) {}
+    }
     return res.status(500).json({ error: error.message || 'Failed to process service data upload' });
   } finally {
     if (client) {

@@ -55,10 +55,11 @@ class ApiService {
   Map<String, dynamic> _parseMapResponse(dynamic data) {
     if (data == null) return {};
     if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.isEmpty) return {};
       try {
-        return json.decode(data) as Map<String, dynamic>;
+        return json.decode(trimmed) as Map<String, dynamic>;
       } on FormatException {
-        final trimmed = data.trim();
         if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<body')) {
           throw const FormatException('Server returned an HTML error response instead of JSON. Check the backend server console logs for details.');
         }
@@ -68,6 +69,7 @@ class ApiService {
     if (data is List<int>) {
       try {
         final decodedString = utf8.decode(data);
+        if (decodedString.trim().isEmpty) return {};
         return json.decode(decodedString) as Map<String, dynamic>;
       } catch (_) {
         return {'error': 'Binary data received instead of JSON.'};
@@ -83,10 +85,11 @@ class ApiService {
   List<dynamic> _parseListResponse(dynamic data) {
     if (data == null) return [];
     if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.isEmpty) return [];
       try {
-        return json.decode(data) as List<dynamic>;
+        return json.decode(trimmed) as List<dynamic>;
       } on FormatException {
-        final trimmed = data.trim();
         if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<body')) {
           throw const FormatException('Server returned an HTML error response instead of JSON. Check the backend server console logs for details.');
         }
@@ -298,9 +301,15 @@ class ApiService {
       );
       return _parseMapResponse(response.data);
     } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
       final data = e.response?.data;
       final parsed = data != null ? _parseMapResponse(data) : {};
-      final msg = parsed['error'] ?? 'Service records upload failed: ${e.message}';
+      final msg = parsed['error'] ??
+          (statusCode == 502
+              ? 'Server Error (502 Bad Gateway): The server ran out of memory or restarted while processing the file. Please deploy the streaming update to Render or upload a smaller file.'
+              : statusCode == 504
+                  ? 'Server Error (504 Gateway Timeout): The upload took too long to complete.'
+                  : 'Service records upload failed: ${e.message}');
       throw Exception(msg);
     }
   }
