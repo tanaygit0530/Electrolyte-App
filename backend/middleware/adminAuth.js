@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const { JWT_SECRET } = require('../config/env');
 
 const adminAuth = (req, res, next) => {
   try {
@@ -16,8 +16,7 @@ const adminAuth = (req, res, next) => {
       return res.status(401).json({ error: 'Authentication token is missing. Access denied.' });
     }
 
-    const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     // Attach admin info to request
     req.admin = decoded;

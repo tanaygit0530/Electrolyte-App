@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:shared_core/shared_core.dart';
@@ -19,9 +20,10 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        Provider<SharedApiService>.value(value: apiService),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => OrderProvider(apiService)),
         ChangeNotifierProvider(create: (_) => ChatHistoryProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
@@ -41,11 +43,22 @@ class SparePartsApp extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
-      title: 'Spare Parts Management',
+      title: 'Electrolyte Technician',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'IN'),
+        Locale('en', 'US'),
+        Locale('en', 'GB'),
+        Locale('en'),
+      ],
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           // Render loading screen if verifying persisted credentials

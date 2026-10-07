@@ -1,4 +1,6 @@
 const { Pool } = require('pg');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
 const connectionString = process.env.DATABASE_URL;
@@ -10,7 +12,7 @@ if (!connectionString) {
 const pool = new Pool({
   connectionString: connectionString,
   ssl: {
-    rejectUnauthorized: false // NeonDB requires SSL connection
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? false : true
   }
 });
 

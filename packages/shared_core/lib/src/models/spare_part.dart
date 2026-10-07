@@ -18,14 +18,15 @@ class SparePart {
   });
 
   factory SparePart.fromJson(Map<String, dynamic> json) {
+    final qty = int.tryParse(json['stock_quantity']?.toString() ?? '0') ?? 0;
     return SparePart(
-      id: json['id'],
-      partName: json['part_name'],
-      partCode: json['part_code'],
-      model: json['model'],
-      price: double.parse(json['price'].toString()),
-      stockQuantity: json['stock_quantity'],
-      status: json['status'],
+      id: json['id']?.toString() ?? '',
+      partName: json['part_name']?.toString() ?? '',
+      partCode: json['part_code']?.toString() ?? '',
+      model: json['model']?.toString() ?? 'N/A',
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      stockQuantity: qty,
+      status: json['status']?.toString() ?? (qty > 0 ? 'Available' : 'Out of Stock'),
     );
   }
 }

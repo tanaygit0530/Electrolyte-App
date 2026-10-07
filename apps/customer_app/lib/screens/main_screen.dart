@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../providers/order_provider.dart';
@@ -18,12 +20,39 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _isOffline = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderProvider>().fetchOrders();
     });
+    _initConnectivity();
+  }
+
+  Future<void> _initConnectivity() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      _updateConnectionStatus(results);
+    } catch (_) {}
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> results) {
+    final offline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+    if (_isOffline != offline && mounted) {
+      setState(() {
+        _isOffline = offline;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   final List<Widget> _screens = [
@@ -71,7 +100,40 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      body: IndexedStack(index: navProvider.selectedIndex, children: _screens),
+      body: Column(
+        children: [
+          if (_isOffline)
+            Container(
+              width: double.infinity,
+              color: Colors.red.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              child: const SafeArea(
+                bottom: false,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      'No internet connection. Please check your network.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: IndexedStack(
+              index: navProvider.selectedIndex,
+              children: _screens,
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navProvider.selectedIndex,
         onTap: (index) => navProvider.setIndex(index),

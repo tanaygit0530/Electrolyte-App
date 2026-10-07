@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config/env');
 
 const requireTechnicianAuth = (req, res, next) => {
   try {
@@ -15,8 +16,7 @@ const requireTechnicianAuth = (req, res, next) => {
       return res.status(401).json({ error: 'Authentication token is missing. Access denied.' });
     }
 
-    const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, JWT_SECRET);
     
     if (decoded.role !== 'technician' && decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden: Requires technician or admin role.' });

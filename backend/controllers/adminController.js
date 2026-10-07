@@ -6,7 +6,8 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-require('dotenv').config();
+const { JWT_SECRET } = require('../config/env');
+const { invalidateVocabulary } = require('../services/vocabularyService');
 
 // JWT Admin Login
 const login = async (req, res) => {
@@ -30,10 +31,9 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid password' });
     }
 
-    const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: 'admin' },
-      secret,
+      JWT_SECRET,
       { expiresIn: '1d' }
     );
 
@@ -172,6 +172,7 @@ const uploadStock = async (req, res) => {
     );
 
     await client.query('COMMIT');
+    invalidateVocabulary();
 
     res.json({
       success: true,

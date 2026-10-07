@@ -34,12 +34,25 @@ class ProfileScreen extends StatelessWidget {
               style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 32),
-            // _buildProfileItem(Icons.badge, "Technician ID", auth.id != null ? "TECH-00${auth.id}" : "TECH-2024-001"),
-            _buildProfileItem(Icons.phone, "Mobile Number", "+91 99999 99999"),
             _buildProfileItem(
-              Icons.location_on,
-              "Service Center",
-              "Mumbai Hub, MH",
+              Icons.badge_outlined,
+              "Technician ID",
+              auth.id != null ? "TECH-#${auth.id.toString().padLeft(4, '0')}" : "TECH-UNASSIGNED",
+            ),
+            _buildProfileItem(
+              Icons.work_outline,
+              "Account Role",
+              auth.role,
+            ),
+            _buildProfileItem(
+              Icons.phone_outlined,
+              "Contact Number",
+              auth.phone ?? "Not provided",
+            ),
+            _buildProfileItem(
+              Icons.store_mall_directory_outlined,
+              "Assigned Service Hub",
+              "Authorized Service Center",
             ),
             const Divider(height: 40),
             SwitchListTile(

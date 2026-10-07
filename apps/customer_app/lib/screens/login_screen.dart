@@ -90,10 +90,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkBlueBg : AppTheme.primaryYellow.withOpacity(0.15),
+                          color: isDark ? AppTheme.darkBlueBg : AppTheme.primaryYellow.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppTheme.primaryYellow.withOpacity(0.4),
+                            color: AppTheme.primaryYellow.withValues(alpha: 0.4),
                             width: 2,
                           ),
                         ),
@@ -156,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
                               prefixIcon: const Icon(Icons.email_outlined, size: 20, color: Colors.grey),
                               filled: true,
-                              fillColor: isDark ? AppTheme.darkBlueBg.withOpacity(0.5) : Colors.grey[50],
+                              fillColor: isDark ? AppTheme.darkBlueBg.withValues(alpha: 0.5) : Colors.grey[50],
                               contentPadding: const EdgeInsets.symmetric(vertical: 16),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -228,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 },
                               ),
                               filled: true,
-                              fillColor: isDark ? AppTheme.darkBlueBg.withOpacity(0.5) : Colors.grey[50],
+                              fillColor: isDark ? AppTheme.darkBlueBg.withValues(alpha: 0.5) : Colors.grey[50],
                               contentPadding: const EdgeInsets.symmetric(vertical: 16),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),

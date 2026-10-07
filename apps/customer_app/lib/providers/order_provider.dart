@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 import 'package:shared_core/shared_core.dart';
 
 class OrderProvider with ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final SharedApiService _apiService;
   List<OrderModel> _orders = [];
   bool _isLoading = false;
+
+  OrderProvider([SharedApiService? apiService])
+      : _apiService = apiService ?? SharedApiService();
 
   List<OrderModel> get orders => _orders;
   bool get isLoading => _isLoading;

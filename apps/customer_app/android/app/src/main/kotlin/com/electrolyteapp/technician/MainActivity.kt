@@ -1,4 +1,4 @@
-package com.example.electro_app
+package com.electrolyteapp.technician
 
 import io.flutter.embedding.android.FlutterActivity
 

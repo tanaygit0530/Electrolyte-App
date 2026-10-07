@@ -26,10 +26,21 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 0) {
+      _scannerController.start();
+    } else {
+      _scannerController.stop();
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _textController.dispose();
     _scannerController.dispose();
@@ -117,7 +128,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 ),
                 if (provider.isLoading)
                   Container(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     child: const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -162,9 +173,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.75),
+              color: Colors.black.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: const Row(
               children: [
@@ -189,7 +200,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.95),
+                color: const Color(0xFFEF4444).withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -223,7 +234,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
               color: isDark ? AppTheme.darkCardColor : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
               ),
             ),
             child: Column(
@@ -279,7 +290,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
+                color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                 border: Border.all(color: const Color(0xFFEF4444)),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -315,7 +326,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
               color: isDark ? AppTheme.darkCardColor : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
               ),
             ),
             child: Column(
@@ -412,7 +423,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
+                color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                 border: Border.all(color: const Color(0xFFEF4444)),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -458,10 +469,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkCardColor : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: primaryColor.withOpacity(0.6), width: 2),
+              border: Border.all(color: primaryColor.withValues(alpha: 0.6), width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: primaryColor.withOpacity(0.16),
+                  color: primaryColor.withValues(alpha: 0.16),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),
@@ -473,7 +484,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.12),
+                    color: primaryColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -510,7 +521,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                   decoration: BoxDecoration(
                     color: bannerBg,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: bannerBorder.withOpacity(0.6), width: 1.5),
+                    border: Border.all(color: bannerBorder.withValues(alpha: 0.6), width: 1.5),
                   ),
                   child: Row(
                     children: [
@@ -612,7 +623,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 color: isDark ? AppTheme.darkCardColor : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
                 ),
               ),
               child: Column(
@@ -706,7 +717,7 @@ class _ScannerOverlayPainter extends CustomPainter {
     );
 
     // Dim background
-    final backgroundPaint = Paint()..color = Colors.black.withOpacity(0.65);
+    final backgroundPaint = Paint()..color = Colors.black.withValues(alpha: 0.65);
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(RRect.fromRectAndRadius(scanRect, const Radius.circular(16)))

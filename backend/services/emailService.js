@@ -19,7 +19,7 @@ const sendEmail = async (to, invoiceNumber, pdfBuffer, pdfUrl) => {
         <h2>Electrolyte Solutions</h2>
         <p>Dear Customer,</p>
         <p>Please find attached your invoice (<strong>${invoiceNumber}</strong>) for the recent service.</p>
-        // <p>You can also download or view it here: <a href="${pdfUrl}">${pdfUrl}</a></p>
+        ${pdfUrl ? `<p>You can also download or view it here: <a href="${pdfUrl}">${pdfUrl}</a></p>` : ''}
         <br/>
         <p>Thank you for choosing Electrolyte Solutions!</p>
         <hr/>

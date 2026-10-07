@@ -32,18 +32,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Assistant',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
+        title: const Text(
+          'Assistant',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
+            tooltip: 'Start new chat',
             icon: const Icon(Icons.add_box_outlined),
             onPressed: () {
               context.read<ChatProvider>().startNewChat();
@@ -75,20 +70,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               child: LinearProgressIndicator(),
             ),
           _buildInputArea(chatProvider, isDark),
-          // Padding(
-          //   padding: const EdgeInsets.only(bottom: 8.0),
-          //   child: TextButton(
-          //     onPressed: () {},
-          //     child: const Text(
-          //       "Report Inappropriate AI Response",
-          //       style: TextStyle(
-          //         fontSize: 12,
-          //         color: Colors.grey,
-          //         decoration: TextDecoration.underline,
-          //       ),
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
@@ -108,6 +89,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               ),
               child: TextField(
                 controller: _controller,
+                enabled: !provider.isLoading,
                 decoration: const InputDecoration(
                   hintText: "Search for spare parts",
                   border: InputBorder.none,
@@ -116,31 +98,47 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     vertical: 10,
                   ),
                 ),
-                onSubmitted: (value) {
-                  if (value.isNotEmpty) {
-                    provider.handleUserInput(value);
-                    _controller.clear();
-                    _scrollToBottom();
-                  }
-                },
+                onSubmitted: provider.isLoading
+                    ? null
+                    : (value) {
+                        final text = value.trim();
+                        if (text.isNotEmpty) {
+                          provider.handleUserInput(text);
+                          _controller.clear();
+                          _scrollToBottom();
+                        }
+                      },
               ),
             ),
           ),
           const SizedBox(width: 8),
           Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFC107),
+            decoration: BoxDecoration(
+              color: provider.isLoading ? Colors.grey : const Color(0xFFFFC107),
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: () {
-                if (_controller.text.isNotEmpty) {
-                  provider.handleUserInput(_controller.text);
-                  _controller.clear();
-                  _scrollToBottom();
-                }
-              },
+              tooltip: 'Send message',
+              icon: provider.isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send, color: Colors.white),
+              onPressed: provider.isLoading
+                  ? null
+                  : () {
+                      final text = _controller.text.trim();
+                      if (text.isNotEmpty) {
+                        provider.handleUserInput(text);
+                        _controller.clear();
+                        _scrollToBottom();
+                      }
+                    },
             ),
           ),
         ],
@@ -164,8 +162,10 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+    return Semantics(
+      label: isUser ? 'You said: $message' : 'Assistant replied: $message',
+      child: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
         crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
@@ -274,6 +274,7 @@ class _ChatBubble extends StatelessWidget {
             ),
         ],
       ),
+    ),
     );
   }
 }

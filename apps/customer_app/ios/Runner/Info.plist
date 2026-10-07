@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Electro App</string>
+	<string>Electrolyte Technician</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,13 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>electro_app</string>
+	<string>electrolyte_technician</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Electrolyte requires camera access to scan serial number barcodes and QR codes on appliances and spare parts.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Electrolyte requires photo library access to upload warranty cards and appliance nameplate photos for serial verification.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Electrolyte requires permission to save generated invoice PDFs to your photo library.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

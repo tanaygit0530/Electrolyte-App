@@ -84,7 +84,14 @@ exports.createOrder = async (req, res) => {
 
 exports.getAllOrders = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+    let result;
+    if (req.user && req.user.role === 'admin') {
+      result = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+    } else if (req.user && req.user.id) {
+      result = await pool.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    } else {
+      result = await pool.query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 50');
+    }
     res.status(200).json(result.rows.map(formatOrder));
   } catch (error) {
     console.error("Get All Orders Error:", error);

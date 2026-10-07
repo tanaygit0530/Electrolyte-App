@@ -53,3 +53,12 @@ backend/response_debug.json
 backend/test-gemini-v2.js
 .env
 node_modules/
+/tasks.md
+/documentation.md
+/full_audit_report.md
+
+*.jks
+*.keystore
+key.properties
+/Data.xlsx
+/documentation_coverage_analysis.md

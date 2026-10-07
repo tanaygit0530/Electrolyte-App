@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_core/shared_core.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -16,7 +15,6 @@ class BillingScreen extends StatefulWidget {
 
 class _BillingScreenState extends State<BillingScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _apiService = ApiService();
   String _warrantyType = 'Out of Warranty (OW)';
   String _brand = 'Select Brand';
   String _paymentMode = 'UPI';
@@ -27,6 +25,7 @@ class _BillingScreenState extends State<BillingScreen> {
   bool _isGenerating = false;
   bool _gstEnabled = false;
   Timer? _debounce;
+  int _searchSeq = 0;
   
   final _searchController = TextEditingController();
   final _customerNameController = TextEditingController();
@@ -60,15 +59,10 @@ class _BillingScreenState extends State<BillingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
         title: const Text(
           'Create Invoice',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(icon: const Icon(Icons.history), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.share), onPressed: () {}),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -339,6 +333,7 @@ class _BillingScreenState extends State<BillingScreen> {
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
+                  tooltip: 'Clear search',
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
@@ -351,11 +346,14 @@ class _BillingScreenState extends State<BillingScreen> {
         onChanged: (value) {
           if (_debounce?.isActive ?? false) _debounce!.cancel();
           _debounce = Timer(const Duration(milliseconds: 400), () async {
-            if (value.length > 2) {
+            final query = value.trim();
+            final currentSeq = ++_searchSeq;
+            if (query.length > 2) {
               setState(() => _isSearching = true);
               try {
-                final results = await _apiService.searchParts(value);
-                if (mounted) {
+                final apiService = context.read<SharedApiService>();
+                final results = await apiService.searchParts(query);
+                if (mounted && currentSeq == _searchSeq) {
                   setState(() {
                     _searchResults = results;
                   });
@@ -363,12 +361,17 @@ class _BillingScreenState extends State<BillingScreen> {
               } catch (e) {
                 debugPrint("Search error: $e");
               } finally {
-                if (mounted) {
+                if (mounted && currentSeq == _searchSeq) {
                   setState(() => _isSearching = false);
                 }
               }
             } else {
-              setState(() => _searchResults = []);
+              if (mounted && currentSeq == _searchSeq) {
+                setState(() {
+                  _searchResults = [];
+                  _isSearching = false;
+                });
+              }
             }
           });
         },
@@ -406,7 +409,8 @@ class _BillingScreenState extends State<BillingScreen> {
         "gstEnabled": _gstEnabled,
       };
 
-      final response = await _apiService.createInvoice(payload);
+      final apiService = context.read<SharedApiService>();
+      final response = await apiService.createInvoice(payload);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

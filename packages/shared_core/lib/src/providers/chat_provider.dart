@@ -16,16 +16,18 @@ class ChatMessage {
 }
 
 class ChatProvider with ChangeNotifier {
-  final SharedApiService _apiService = SharedApiService();
+  final SharedApiService _apiService;
   final List<ChatMessage> _messages = [];
   String? _currentSessionId;
   bool _isLoading = false;
+  int _messageSeq = 0;
 
   List<ChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
   String? get currentSessionId => _currentSessionId;
 
-  ChatProvider() {
+  ChatProvider([SharedApiService? apiService])
+      : _apiService = apiService ?? SharedApiService() {
     _showGreeting();
   }
 
@@ -40,17 +42,21 @@ class ChatProvider with ChangeNotifier {
   }
 
   Future<void> handleUserInput(String input) async {
-    if (input.trim().isEmpty) return;
+    final trimmed = input.trim();
+    if (trimmed.isEmpty || _isLoading) return;
 
-    _messages.add(ChatMessage(text: input, isUser: true));
+    final seq = ++_messageSeq;
+    _messages.add(ChatMessage(text: trimmed, isUser: true));
     _isLoading = true;
     notifyListeners();
 
     try {
       final response = await _apiService.getChatResponse(
-        input,
+        trimmed,
         sessionId: _currentSessionId,
       );
+      if (seq != _messageSeq) return;
+
       final reply = response['reply'] as String;
       final newSessionId = response['sessionId'] as String?;
       final components = response['components'] as List<dynamic>?;
@@ -61,6 +67,7 @@ class ChatProvider with ChangeNotifier {
 
       _messages.add(ChatMessage(text: reply, isUser: false, components: components));
     } catch (e) {
+      if (seq != _messageSeq) return;
       _messages.add(
         ChatMessage(
           text:
@@ -69,12 +76,15 @@ class ChatProvider with ChangeNotifier {
         ),
       );
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (seq == _messageSeq) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> loadSession(String sessionId) async {
+    final seq = ++_messageSeq;
     _isLoading = true;
     _currentSessionId = sessionId;
     _messages.clear();
@@ -82,6 +92,7 @@ class ChatProvider with ChangeNotifier {
 
     try {
       final data = await _apiService.getSessionMessages(sessionId);
+      if (seq != _messageSeq) return;
       for (var msg in data) {
         _messages.add(
           ChatMessage(
@@ -92,16 +103,21 @@ class ChatProvider with ChangeNotifier {
         );
       }
     } catch (e) {
+      if (seq != _messageSeq) return;
       _messages.add(
         ChatMessage(text: "Failed to load chat history.", isUser: false),
       );
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (seq == _messageSeq) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   void startNewChat() {
+    _messageSeq++;
+    _isLoading = false;
     _currentSessionId = null;
     _messages.clear();
     _showGreeting();
@@ -109,6 +125,8 @@ class ChatProvider with ChangeNotifier {
   }
 
   void clearChat() {
+    _messageSeq++;
+    _isLoading = false;
     _messages.clear();
     _showGreeting();
     notifyListeners();

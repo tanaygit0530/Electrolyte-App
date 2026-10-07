@@ -52,42 +52,44 @@ const HELP_PATTERNS = [
  * @param {string} message
  * @returns {string}
  */
+const logger = require('../utils/logger');
+
 function detectIntent(message) {
   if (typeof message !== 'string') {
-    console.log('[intentService] Invalid message type:', typeof message);
+    logger.debug('[intentService] Invalid message type:', typeof message);
     return 'unknown';
   }
 
   const normalized = message.trim();
 
   if (!normalized) {
-    console.log('[intentService] Empty message provided.');
+    logger.debug('[intentService] Empty message provided.');
     return 'unknown';
   }
 
   const lowerMessage = normalized.toLowerCase();
 
   if (GREETING_PATTERNS.some((pattern) => pattern.test(lowerMessage))) {
-    console.log('[intentService] Detected intent: greeting');
+    logger.debug('[intentService] Detected intent: greeting');
     return 'greeting';
   }
 
   if (THANKS_PATTERNS.some((pattern) => pattern.test(lowerMessage))) {
-    console.log('[intentService] Detected intent: thanks');
+    logger.debug('[intentService] Detected intent: thanks');
     return 'thanks';
   }
 
   if (GOODBYE_PATTERNS.some((pattern) => pattern.test(lowerMessage))) {
-    console.log('[intentService] Detected intent: goodbye');
+    logger.debug('[intentService] Detected intent: goodbye');
     return 'goodbye';
   }
 
   if (HELP_PATTERNS.some((pattern) => pattern.test(lowerMessage))) {
-    console.log('[intentService] Detected intent: help');
+    logger.debug('[intentService] Detected intent: help');
     return 'help';
   }
 
-  console.log('[intentService] No static intent match. Falling through to search pipeline.');
+  logger.debug('[intentService] No static intent match. Falling through to search pipeline.');
   return 'unknown';
 }
 

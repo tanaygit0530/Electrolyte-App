@@ -9,6 +9,7 @@
 const { pool } = require("../config/neondb");
 const { preprocessSearchText } = require("../utils/searchPreprocessor");
 const { parseQuery } = require("../utils/queryParser");
+const logger = require("../utils/logger");
 const { correctSpelling } = require("../utils/spellCorrector");
 const { loadVocabulary } = require("./vocabularyService");
 
@@ -20,18 +21,18 @@ async function searchProducts(userMessage) {
   // Step 1: Normalize user input
   const normalizedText = preprocessSearchText(userMessage);
 
-  console.log("[searchPreprocessor] Output:", normalizedText);
+  logger.debug("[searchPreprocessor] Output:", normalizedText);
 
   // Step 2: Load vocabulary once and correct spelling before parsing
   await loadVocabulary();
   const correctedText = correctSpelling(normalizedText);
 
-  console.log("[spellCorrector] Corrected text:", correctedText);
+  logger.debug("[spellCorrector] Corrected text:", correctedText);
 
   // Step 3: Parse corrected query
   const parsedQuery = parseQuery(correctedText);
 
-  console.log("[queryParser] Parsed:", parsedQuery);
+  logger.debug("[queryParser] Parsed:", parsedQuery);
 
   // Merge all extracted tokens
   const uniqueTokens = [
@@ -96,14 +97,14 @@ WHERE
 LIMIT 20;
 `;
 
-  console.log("\n========== SEARCH DEBUG ==========");
-  console.log("Tokens:", uniqueTokens);
-  console.log("Params:", params);
-  console.log("=================================\n");
+  logger.debug("\n========== SEARCH DEBUG ==========");
+  logger.debug("Tokens:", uniqueTokens);
+  logger.debug("Params:", params);
+  logger.debug("=================================\n");
 
   const result = await pool.query(sql, params);
 
-  console.log("Rows returned:", result.rows.length);
+  logger.debug("Rows returned:", result.rows.length);
 
   return result.rows;
 }

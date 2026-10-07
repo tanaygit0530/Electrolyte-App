@@ -27,22 +27,25 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit to comfortably handle Data.xlsx
 });
 
+const { requireTechnicianAuth } = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
+
 // Single serial number verification (Used by Customer App & Technicians)
-router.get('/check/:serialNumber', serviceRecordsController.checkSerialNumber);
+router.get('/check/:serialNumber', requireTechnicianAuth, serviceRecordsController.checkSerialNumber);
 
 // Bulk file upload & 60-day audit (Used by Admin App)
-router.post('/upload', upload.single('file'), serviceRecordsController.uploadServiceFile);
+router.post('/upload', adminAuth, upload.single('file'), serviceRecordsController.uploadServiceFile);
 
 // Upload history audit logs
-router.get('/history', serviceRecordsController.getUploadHistory);
+router.get('/history', adminAuth, serviceRecordsController.getUploadHistory);
 
 // List all found records currently within the 60-day window
-router.get('/found-entries', serviceRecordsController.getFoundEntries);
+router.get('/found-entries', adminAuth, serviceRecordsController.getFoundEntries);
 
 // Background ingestion job status & live progress polling
-router.get('/job-status/:jobId', serviceRecordsController.getJobStatus);
+router.get('/job-status/:jobId', adminAuth, serviceRecordsController.getJobStatus);
 
 // Export CSV of found records
-router.get('/export-found', serviceRecordsController.exportFoundCsv);
+router.get('/export-found', adminAuth, serviceRecordsController.exportFoundCsv);
 
 module.exports = router;

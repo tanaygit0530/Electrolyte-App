@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/order_provider.dart';
 import '../providers/chat_history_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/navigation_provider.dart';
@@ -20,7 +19,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderProvider>().fetchOrders();
       context.read<ChatHistoryProvider>().fetchSessions();
       context.read<InvoiceProvider>().fetchInvoices();
     });
@@ -29,7 +27,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -38,7 +36,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           bottom: const TabBar(
             tabs: [
-              // Tab(text: "Orders"),
               Tab(text: "Chats"),
               Tab(text: "Invoices"),
             ],
@@ -48,9 +45,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           actions: [
             IconButton(
+              tooltip: 'Refresh history',
               icon: const Icon(Icons.refresh),
               onPressed: () {
-                context.read<OrderProvider>().fetchOrders();
                 context.read<ChatHistoryProvider>().fetchSessions();
                 context.read<InvoiceProvider>().fetchInvoices();
               },
@@ -59,7 +56,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         body: TabBarView(
           children: [
-            // _buildOrderHistory(),
             _buildChatHistory(),
             _buildInvoiceHistory(),
           ],
@@ -67,34 +63,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
     );
   }
-
-  // Widget _buildOrderHistory() {
-  //   return Consumer<OrderProvider>(
-  //     builder: (context, provider, child) {
-  //       if (provider.isLoading) {
-  //         return const Center(child: CircularProgressIndicator());
-  //       }
-  //       if (provider.orders.isEmpty) {
-  //         return const Center(child: Text("No order history found."));
-  //       }
-  //       return ListView.builder(
-  //         padding: const EdgeInsets.all(16),
-  //         itemCount: provider.orders.length,
-  //         itemBuilder: (context, index) {
-  //           final order = provider.orders[index];
-  //           return _HistoryCard(
-  //             title: order.partName,
-  //             subtitle: "Order ID: ${order.id.length > 8 ? order.id.substring(0, 8) : order.id}...",
-  //             date: DateFormat('dd MMM yyyy, hh:mm a').format(order.createdAt),
-  //             status: order.status,
-  //             icon: Icons.shopping_bag_outlined,
-  //             onTap: () {},
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
 
   Widget _buildChatHistory() {
     return Consumer<ChatHistoryProvider>(

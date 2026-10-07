@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/neondb');
+const { JWT_SECRET } = require('../config/env');
 
 const login = async (req, res) => {
   try {
@@ -25,7 +26,7 @@ const login = async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'prasadinternatelectrolyte',
+      JWT_SECRET,
       { expiresIn: '1d' }
     );
 

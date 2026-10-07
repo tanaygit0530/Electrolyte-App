@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/spare_part.dart';
 import '../models/order.dart';
 
@@ -11,8 +12,15 @@ class SharedApiService {
   factory SharedApiService() => _instance;
   SharedApiService._internal();
 
-  final http.Client _client = http.Client();
+  http.Client _client = http.Client();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final Duration _timeout = const Duration(seconds: 15);
+
+  /// Closes and resets the HTTP client connection pool
+  void resetClient() {
+    _client.close();
+    _client = http.Client();
+  }
 
   Function()? onSessionExpired;
 
@@ -36,8 +44,16 @@ class SharedApiService {
       headers.addAll(extraHeaders);
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('customer_token') ?? prefs.getString('admin_token');
+      // 1. Read token securely from Keychain / Keystore
+      String? token = await _secureStorage.read(key: 'customer_token') ??
+          await _secureStorage.read(key: 'admin_token');
+
+      // 2. Fallback to legacy SharedPreferences if migrating
+      if (token == null || token.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        token = prefs.getString('customer_token') ?? prefs.getString('admin_token');
+      }
+
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }
@@ -93,7 +109,10 @@ class SharedApiService {
   }
 
   Future<List<SparePart>> searchParts(String query) async {
-    final response = await _get('$baseUrl/parts/search?q=$query');
+    final uri = Uri.parse('$baseUrl/parts/search').replace(
+      queryParameters: {'q': query},
+    );
+    final response = await _get(uri.toString());
     if (response.statusCode == 200) {
       List data = json.decode(response.body);
       return data.map((item) => SparePart.fromJson(item)).toList();

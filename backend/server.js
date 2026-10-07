@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { JWT_SECRET, PORT, ALLOWED_ORIGINS, DATABASE_URL } = require('./config/env');
 
 const { Client } = require('pg');
 const WebSocket = require('ws');
@@ -8,6 +10,7 @@ const url = require('url');
 const jwt = require('jsonwebtoken');
 const { pool } = require('./config/neondb');
 const { closeBrowser, getBrowser } = require('./services/pdfService');
+const { invalidateVocabulary } = require('./services/vocabularyService');
 
 const chatRoutes = require('./routes/chatRoutes');
 const partsRoutes = require('./routes/parts');
@@ -20,11 +23,47 @@ const adminRoutes = require('./routes/adminRoutes');
 const serviceRecordsRoutes = require('./routes/serviceRecordsRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
 
-app.use(cors());
+// Security Headers
+app.use(helmet());
+
+// CORS Whitelist Protection
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (such as mobile apps or curl)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Blocked by CORS policy'));
+  },
+  credentials: true
+};
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Rate Limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again in 15 minutes.' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down.' }
+});
+
+app.use('/auth/login', authLimiter);
+app.use('/chat', apiLimiter);
+app.use('/invoice', apiLimiter);
+app.use('/parts', apiLimiter);
 
 // Routes
 app.use('/chat', chatRoutes);
@@ -153,8 +192,8 @@ const setupDatabaseTriggerAndListener = async () => {
 
     // 2. Set up a dedicated client to LISTEN to the channel
     const listenClient = new Client({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? false : true }
     });
 
     await listenClient.connect();
@@ -165,6 +204,7 @@ const setupDatabaseTriggerAndListener = async () => {
     listenClient.on('notification', (msg) => {
       console.log(`Received PostgreSQL notification on ${msg.channel}. Broadcasting...`);
       if (msg.channel === 'products_channel') {
+        invalidateVocabulary();
         broadcastDashboardStats();
       } else if (msg.channel === 'invoices_channel') {
         broadcastInvoiceUpdate();
@@ -196,10 +236,9 @@ wss.on('connection', async (ws, req) => {
       return;
     }
 
-    const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
     let decoded;
     try {
-      decoded = jwt.verify(token, secret);
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch (err) {
       console.error('WS Connection unauthorized:', err.message);
       ws.close(4001, 'Invalid Token');
