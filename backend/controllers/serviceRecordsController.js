@@ -118,7 +118,7 @@ exports.checkSerialNumber = async (req, res) => {
         repeatRisk: false,
         canCloseCall: true,
         serialNumber: cleanSerial,
-        message: 'Safe to close the call. No prior service record found in the database.',
+        message: 'Safe to close',
         record: null
       });
     }
@@ -140,7 +140,7 @@ exports.checkSerialNumber = async (req, res) => {
         serialNumber: row.serial_no,
         serviceDate: displayEndDate,
         endDate: displayEndDate,
-        message: `Don't close the call, it may come in repeat. Serial number was serviced ${daysAgo} days ago (End Date: ${displayEndDate}), within the 60-day repeat risk window.`,
+        message: 'Repeat risk',
         record: {
           caseNumber: row.case_number,
           customerName: row.customer_name,
@@ -158,11 +158,6 @@ exports.checkSerialNumber = async (req, res) => {
         }
       });
     } else {
-      let notFoundMsg = `Safe to close the call. Last service End Date was ${daysAgo} days ago (${displayEndDate}), beyond the 60-day repeat window.`;
-      if (!hasValidEndDate) {
-        notFoundMsg = `Safe to close the call. No valid recent End Date found within the 60-day repeat window.`;
-      }
-
       return res.json({
         success: true,
         status: 'SAFE TO CLOSE',
@@ -173,7 +168,7 @@ exports.checkSerialNumber = async (req, res) => {
         serialNumber: row.serial_no,
         serviceDate: displayEndDate,
         endDate: displayEndDate,
-        message: notFoundMsg,
+        message: 'Safe to close',
         record: {
           caseNumber: row.case_number,
           customerName: row.customer_name,

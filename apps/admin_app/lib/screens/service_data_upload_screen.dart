@@ -324,7 +324,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
           child: _buildKpiCard(
             title: 'Total Records Ingested',
             value: summary.totalRecords.toString(),
-            subtitle: 'Processed from sheet',
+            // subtitle: 'Processed from sheet',
             icon: Icons.list_alt_rounded,
             accentColor: AdminTheme.primaryYellow,
           ),
@@ -335,7 +335,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
           child: _buildKpiCard(
             title: 'Repeat Risk (< 60 Days)',
             value: summary.foundWithin60Days.toString(),
-            subtitle: "Don't close call • Repeat risk",
+            // subtitle: "Don't close call • Repeat risk",
             icon: Icons.warning_amber_rounded,
             accentColor: AdminTheme.errorColor,
             isHighlighted: true,
@@ -347,7 +347,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
           child: _buildKpiCard(
             title: 'Safe to Close (> 60 Days)',
             value: summary.olderThan60Days.toString(),
-            subtitle: 'Beyond 60 days • Safe to close',
+            // subtitle: 'Beyond 60 days • Safe to close',
             icon: Icons.check_circle_outline_rounded,
             accentColor: AdminTheme.accentEmerald,
           ),
@@ -359,7 +359,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
   Widget _buildKpiCard({
     required String title,
     required String value,
-    required String subtitle,
+    // required String subtitle,
     required IconData icon,
     required Color accentColor,
     bool isHighlighted = false,
@@ -417,15 +417,15 @@ class ServiceDataUploadScreen extends StatelessWidget {
                     fontFamily: 'Poppins',
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AdminTheme.textSecondary.withOpacity(0.6),
-                    fontFamily: 'Poppins',
-                  ),
-                ),
+                // const SizedBox(height: 2),
+                // Text(
+                //   subtitle,
+                //   style: TextStyle(
+                //     fontSize: 11,
+                //     color: AdminTheme.textSecondary.withOpacity(0.6),
+                //     fontFamily: 'Poppins',
+                //   ),
+                // ),
               ],
             ),
           ),

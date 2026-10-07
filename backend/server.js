@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { JWT_SECRET, PORT, ALLOWED_ORIGINS, DATABASE_URL } = require('./config/env');
+const { JWT_SECRET, PORT, ALLOWED_ORIGINS, DATABASE_URL, NODE_ENV } = require('./config/env');
 
 const { Client } = require('pg');
 const WebSocket = require('ws');
@@ -25,16 +25,42 @@ const serviceRecordsRoutes = require('./routes/serviceRecordsRoutes');
 const app = express();
 
 // Security Headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
-// CORS Whitelist Protection
+// CORS Configuration
+const isAllowedOrigin = (origin) => {
+  // Allow requests with no origin (such as mobile apps, curl, Postman)
+  if (!origin) return true;
+
+  // Allow wildcard if configured
+  if (ALLOWED_ORIGINS.includes('*')) return true;
+
+  // Allow explicitly listed origins
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+
+  // Allow any localhost or 127.0.0.1 port (for Flutter Web, Vite, React, etc.)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  // Allow local network IP in development (for physical device testing on same Wi-Fi)
+  if (NODE_ENV === 'development' && /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  return false;
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (such as mobile apps or curl)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
-    return callback(new Error('Blocked by CORS policy'));
+    const error = new Error(`Blocked by CORS policy: Origin ${origin} is not allowed`);
+    error.status = 403;
+    return callback(error);
   },
   credentials: true
 };
@@ -83,6 +109,12 @@ app.get('/', (req, res) => {
 
 // Global JSON Error Handler
 app.use((err, req, res, next) => {
+  if (err.message && err.message.startsWith('Blocked by CORS policy')) {
+    console.warn(`[CORS Blocked] ${err.message}`);
+    return res.status(err.status || 403).json({
+      error: err.message
+    });
+  }
   console.error('Unhandled Backend Error:', err);
   res.status(err.status || 500).json({
     error: err.message || 'Internal Server Error'

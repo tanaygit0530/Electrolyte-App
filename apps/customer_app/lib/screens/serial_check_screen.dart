@@ -451,12 +451,6 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
     final result = provider.result!;
     final isRepeatRisk = result.isWithin60Days;
     final primaryColor = isRepeatRisk ? const Color(0xFFEF4444) : const Color(0xFF10B981);
-    final bannerBg = isRepeatRisk
-        ? (isDark ? const Color(0xFF3B1212) : const Color(0xFFFEF2F2))
-        : (isDark ? const Color(0xFF06331E) : const Color(0xFFECFDF5));
-    final bannerBorder = isRepeatRisk
-        ? const Color(0xFFF87171)
-        : const Color(0xFF34D399);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -512,80 +506,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-
-                // Prominent Callout Banner with exact user requested messages
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: bannerBg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: bannerBorder.withValues(alpha: 0.6), width: 1.5),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isRepeatRisk ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
-                        color: primaryColor,
-                        size: 26,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          isRepeatRisk
-                              ? "Don't close the call, it may come in repeat."
-                              : "Safe to close the call.",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: primaryColor,
-                            height: 1.25,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Subtext / Days Ago detail
-                if (isRepeatRisk && result.daysAgo != null)
-                  Text(
-                    'End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''})\nWithin the 60-day repeat risk window.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.red.shade300 : Colors.red.shade700,
-                      height: 1.3,
-                    ),
-                  )
-                else if (!isRepeatRisk && result.daysAgo != null)
-                  Text(
-                    'Last service End Date was ${result.daysAgo} days ago (${result.serviceDate ?? result.record?['endDate'] ?? ''})\nExceeds 60 days • Safe to proceed.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.green.shade300 : Colors.green.shade700,
-                      height: 1.3,
-                    ),
-                  )
-                else
-                  Text(
-                    result.message ?? 'No prior service records found in database.\nSafe to proceed.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.green.shade300 : Colors.green.shade700,
-                      height: 1.3,
-                    ),
-                  ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 const Divider(),
-                const SizedBox(height: 10),
+                const SizedBox(height: 14),
 
                 // Serial Number badge
                 Row(
