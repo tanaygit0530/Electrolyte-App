@@ -59,21 +59,56 @@ class SparePartsApp extends StatelessWidget {
         Locale('en', 'GB'),
         Locale('en'),
       ],
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          // Render loading screen if verifying persisted credentials
-          if (auth.isLoading && !auth.isAuthenticated) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryYellow),
-              ),
-            );
-          }
+      home: const AppStartupFlow(),
+    );
+  }
+}
 
-          // Route dynamically based on session status
-          return auth.isAuthenticated ? const MainScreen() : const LoginScreen();
-        },
+class AppStartupFlow extends StatefulWidget {
+  const AppStartupFlow({super.key});
+
+  @override
+  State<AppStartupFlow> createState() => _AppStartupFlowState();
+}
+
+class _AppStartupFlowState extends State<AppStartupFlow> {
+  bool _hasIntroFinished = false;
+
+  void _onIntroFinished() {
+    if (mounted) {
+      setState(() {
+        _hasIntroFinished = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    final Widget currentScreen;
+    if (!_hasIntroFinished || (auth.isLoading && !auth.isAuthenticated)) {
+      currentScreen = IntroFlashScreen(
+        key: const ValueKey('intro_flash_screen'),
+        minDisplayDuration: const Duration(milliseconds: 2300),
+        subtitle: 'POWERING RELIABLE SERVICE',
+        onFinished: _onIntroFinished,
+      );
+    } else if (auth.isAuthenticated) {
+      currentScreen = const MainScreen(key: ValueKey('main_screen'));
+    } else {
+      currentScreen = const LoginScreen(key: ValueKey('login_screen'));
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: child,
       ),
+      child: currentScreen,
     );
   }
 }

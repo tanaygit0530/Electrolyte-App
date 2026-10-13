@@ -55,13 +55,6 @@ class _MainScreenState extends State<MainScreen> {
     super.dispose();
   }
 
-  final List<Widget> _screens = [
-    const ChatbotScreen(),
-    const SerialCheckScreen(),
-    const HistoryScreen(),
-    const BillingScreen(),
-    const ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +122,15 @@ class _MainScreenState extends State<MainScreen> {
           Expanded(
             child: IndexedStack(
               index: navProvider.selectedIndex,
-              children: _screens,
+              children: [
+                const ChatbotScreen(),
+                navProvider.selectedIndex == 1
+                    ? const SerialCheckScreen()
+                    : const SizedBox.shrink(),
+                const HistoryScreen(),
+                const BillingScreen(),
+                const ProfileScreen(),
+              ],
             ),
           ),
         ],
