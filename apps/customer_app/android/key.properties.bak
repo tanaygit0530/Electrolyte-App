@@ -1,0 +1,4 @@
+keyAlias=upload
+keyPassword=electrolyteintern
+storeFile=../app/upload-keystore.jks
+storePassword=electrolytestore

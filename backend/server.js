@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { JWT_SECRET, PORT, ALLOWED_ORIGINS, DATABASE_URL, NODE_ENV } = require('./config/env');
 
 const { Client } = require('pg');
 const WebSocket = require('ws');
@@ -8,6 +10,7 @@ const url = require('url');
 const jwt = require('jsonwebtoken');
 const { pool } = require('./config/neondb');
 const { closeBrowser, getBrowser } = require('./services/pdfService');
+const { invalidateVocabulary } = require('./services/vocabularyService');
 
 const chatRoutes = require('./routes/chatRoutes');
 const partsRoutes = require('./routes/parts');
@@ -20,11 +23,73 @@ const adminRoutes = require('./routes/adminRoutes');
 const serviceRecordsRoutes = require('./routes/serviceRecordsRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Security Headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+// CORS Configuration
+const isAllowedOrigin = (origin) => {
+  // Allow requests with no origin (such as mobile apps, curl, Postman)
+  if (!origin) return true;
+
+  // Allow wildcard if configured
+  if (ALLOWED_ORIGINS.includes('*')) return true;
+
+  // Allow explicitly listed origins
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+
+  // Allow any localhost or 127.0.0.1 port (for Flutter Web, Vite, React, etc.)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  // Allow local network IP in development (for physical device testing on same Wi-Fi)
+  if (NODE_ENV === 'development' && /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  return false;
+};
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
+    const error = new Error(`Blocked by CORS policy: Origin ${origin} is not allowed`);
+    error.status = 403;
+    return callback(error);
+  },
+  credentials: true
+};
+app.use(cors(corsOptions));
+
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
+
+// Rate Limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again in 15 minutes.' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down.' }
+});
+
+app.use('/auth/login', authLimiter);
+app.use('/chat', apiLimiter);
+app.use('/invoice', apiLimiter);
+app.use('/parts', apiLimiter);
 
 // Routes
 app.use('/chat', chatRoutes);
@@ -44,6 +109,18 @@ app.get('/', (req, res) => {
 
 // Global JSON Error Handler
 app.use((err, req, res, next) => {
+  if (err.message && err.message.startsWith('Blocked by CORS policy')) {
+    console.warn(`[CORS Blocked] ${err.message}`);
+    return res.status(err.status || 403).json({
+      error: err.message
+    });
+  }
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      error: 'The uploaded file exceeds the 200MB limit. Please upload a smaller file.'
+    });
+  }
   console.error('Unhandled Backend Error:', err);
   res.status(err.status || 500).json({
     error: err.message || 'Internal Server Error'
@@ -155,8 +232,8 @@ const setupDatabaseTriggerAndListener = async () => {
     const dbUrl = (process.env.DATABASE_URL || '').trim();
     const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
     const listenClient = new Client({
-      connectionString: dbUrl,
-      ssl: isLocalhost ? false : { rejectUnauthorized: false }
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? false : true }
     });
 
     await listenClient.connect();
@@ -167,6 +244,7 @@ const setupDatabaseTriggerAndListener = async () => {
     listenClient.on('notification', (msg) => {
       console.log(`Received PostgreSQL notification on ${msg.channel}. Broadcasting...`);
       if (msg.channel === 'products_channel') {
+        invalidateVocabulary();
         broadcastDashboardStats();
       } else if (msg.channel === 'invoices_channel') {
         broadcastInvoiceUpdate();
@@ -199,10 +277,9 @@ wss.on('connection', async (ws, req) => {
       return;
     }
 
-    const secret = process.env.JWT_SECRET || 'prasadinternatelectrolyte';
     let decoded;
     try {
-      decoded = jwt.verify(token, secret);
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch (err) {
       console.error('WS Connection unauthorized:', err.message);
       ws.close(4001, 'Invalid Token');

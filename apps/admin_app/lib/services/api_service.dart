@@ -294,8 +294,8 @@ class ApiService {
         '$baseUrl/api/service-records/upload',
         data: formData,
         options: Options(
-          sendTimeout: const Duration(minutes: 5),
-          receiveTimeout: const Duration(minutes: 5),
+          sendTimeout: const Duration(minutes: 15),
+          receiveTimeout: const Duration(minutes: 15),
         ),
         onSendProgress: onProgress,
       );
@@ -304,12 +304,34 @@ class ApiService {
       final statusCode = e.response?.statusCode;
       final data = e.response?.data;
       final parsed = data != null ? _parseMapResponse(data) : {};
+      final isTimeout = e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.sendTimeout;
       final msg = parsed['error'] ??
-          (statusCode == 502
-              ? 'Server Error (502 Bad Gateway): The server ran out of memory or restarted while processing the file. Please deploy the streaming update to Render or upload a smaller file.'
-              : statusCode == 504
-                  ? 'Server Error (504 Gateway Timeout): The upload took too long to complete.'
-                  : 'Service records upload failed: ${e.message}');
+          (isTimeout
+              ? 'The server took longer than expected to finish processing this large dataset. The background ingestion may still be running in the cloud database. Please verify your internet connection or check the Upload History.'
+              : statusCode == 502
+                  ? 'Server Error (502 Bad Gateway): The server ran out of memory or restarted while processing the file. Please deploy the streaming update to Render or upload a smaller file.'
+                  : statusCode == 504
+                      ? 'Server Error (504 Gateway Timeout): The upload took too long to complete.'
+                      : 'Service records upload failed: ${e.message}');
+      throw Exception(msg);
+    }
+  }
+
+  /// Poll Background Service Data Ingestion Job Status
+  Future<Map<String, dynamic>> getServiceJobStatus(String jobId) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/api/service-records/job-status/$jobId',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 15),
+        ),
+      );
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to check background audit status: ${e.message}';
       throw Exception(msg);
     }
   }

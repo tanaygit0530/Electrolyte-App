@@ -1,0 +1,8 @@
+# Release Keystore Configuration Template
+# Place your release keystore in android/app/upload-keystore.jks (or android/keystore.jks)
+# Copy this file to android/key.properties and fill in your credentials.
+# NEVER commit key.properties or keystore files to version control.
+keyAlias=upload
+keyPassword=your_key_password_here
+storeFile=../app/upload-keystore.jks
+storePassword=your_store_password_here

@@ -14,7 +14,14 @@ const formatComponent = (prod) => ({
 
 exports.getAllParts = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 100));
+    const offset = (page - 1) * limit;
+
+    const result = await pool.query(
+      'SELECT * FROM products ORDER BY id ASC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
     const formattedData = result.rows.map(formatComponent);
     res.status(200).json(formattedData);
   } catch (error) {

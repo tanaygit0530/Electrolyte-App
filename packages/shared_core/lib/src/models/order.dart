@@ -23,15 +23,17 @@ class OrderModel {
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
-      id: json['id'],
-      partCode: json['part_code'],
-      partName: json['part_name'],
-      quantity: json['quantity'],
-      price: double.parse(json['price'].toString()),
-      gst: double.parse(json['gst'].toString()),
-      totalAmount: double.parse(json['total_amount'].toString()),
-      status: json['status'],
-      createdAt: DateTime.parse(json['created_at']),
+      id: json['id']?.toString() ?? '',
+      partCode: json['part_code']?.toString() ?? '',
+      partName: json['part_name']?.toString() ?? '',
+      quantity: int.tryParse(json['quantity']?.toString() ?? '0') ?? 0,
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      gst: double.tryParse(json['gst']?.toString() ?? '0') ?? 0.0,
+      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
+      status: json['status']?.toString() ?? 'Pending',
+      createdAt: json['created_at'] != null
+          ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
+          : DateTime.now(),
     );
   }
 }

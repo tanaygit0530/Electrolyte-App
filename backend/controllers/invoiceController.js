@@ -47,16 +47,44 @@ const createInvoice = async (req, res) => {
       gstEnabled
     } = payload;
 
+    // Validate essential fields
+    if (!customerName || typeof customerName !== 'string' || !customerName.trim()) {
+      return res.status(400).json({ error: 'Customer name is required.' });
+    }
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ error: 'At least one product item is required for the invoice.' });
+    }
+
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (!p.name || typeof p.name !== 'string') {
+        return res.status(400).json({ error: `Product at position ${i + 1} is missing a name.` });
+      }
+      const qty = parseInt(p.qty, 10);
+      const rate = parseFloat(p.rate);
+      if (isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ error: `Product '${p.name}' must have a valid quantity greater than 0.` });
+      }
+      if (isNaN(rate) || rate < 0) {
+        return res.status(400).json({ error: `Product '${p.name}' must have a valid non-negative rate.` });
+      }
+    }
+
+    const sCharge = parseFloat(serviceCharge) || 0;
+    if (sCharge < 0) {
+      return res.status(400).json({ error: 'Service charge cannot be negative.' });
+    }
+
     // Calculate subtotal from products (name, qty, rate)
-    const items = (products || []).map(p => ({
-      description: p.name,
-      quantity: p.qty,
-      rate: p.rate,
-      amount: p.qty * p.rate
+    const items = products.map(p => ({
+      description: p.name.trim(),
+      quantity: parseInt(p.qty, 10),
+      rate: parseFloat(p.rate),
+      amount: parseInt(p.qty, 10) * parseFloat(p.rate)
     }));
 
     const subTotal = items.reduce((sum, item) => sum + item.amount, 0);
-    const sCharge = parseFloat(serviceCharge) || 0;
     const taxableBase = subTotal + sCharge;
     const gstAmount = gstEnabled ? (taxableBase * 0.18) : 0;
     const totalAmount = taxableBase + gstAmount;

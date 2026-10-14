@@ -44,8 +44,9 @@ function preprocessSearchText(text) {
     // Remove leading/trailing spaces
     .trim();
 
-  console.log('[searchPreprocessor] Input:', text);
-  console.log('[searchPreprocessor] Output:', normalizedText);
+  const logger = require('./logger');
+  logger.debug('[searchPreprocessor] Input:', text);
+  logger.debug('[searchPreprocessor] Output:', normalizedText);
 
   return normalizedText;
 }

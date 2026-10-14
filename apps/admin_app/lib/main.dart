@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_core/shared_core.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/upload_provider.dart';
@@ -63,22 +64,62 @@ class _ElectrolyteAdminAppAppState extends State<ElectrolyteAdminApp> {
         title: 'Electrolyte Admin Portal',
         debugShowCheckedModeBanner: false,
         theme: AdminTheme.darkTheme,
-        home: Consumer<AuthProvider>(
-          builder: (context, auth, _) {
-            // Render loading screen if verifying persisted credentials
-            if (auth.isLoading && !auth.isAuthenticated) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(color: AdminTheme.accentTeal),
-                ),
-              );
-            }
-
-            // Route dynamically based on session status
-            return auth.isAuthenticated ? const MainWorkspace() : const LoginScreen();
-          },
-        ),
+        home: const AdminStartupFlow(),
       ),
+    );
+  }
+}
+
+class AdminStartupFlow extends StatefulWidget {
+  const AdminStartupFlow({super.key});
+
+  @override
+  State<AdminStartupFlow> createState() => _AdminStartupFlowState();
+}
+
+class _AdminStartupFlowState extends State<AdminStartupFlow> {
+  bool _hasIntroFinished = false;
+
+  void _onIntroFinished() {
+    if (mounted) {
+      setState(() {
+        _hasIntroFinished = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    // Initial launch: Display animated intro flash screen with company logo
+    if (!_hasIntroFinished) {
+      return IntroFlashScreen(
+        minDisplayDuration: const Duration(milliseconds: 2000),
+        subtitle: 'ADMINISTRATION & AUDIT PORTAL',
+        onFinished: _onIntroFinished,
+      );
+    }
+
+    // Still checking auth credentials
+    if (auth.isLoading && !auth.isAuthenticated) {
+      return const IntroFlashScreen(
+        minDisplayDuration: Duration(milliseconds: 300),
+        subtitle: 'VERIFYING CREDENTIALS...',
+        showProgress: true,
+      );
+    }
+
+    // Smooth fade transition into MainWorkspace or LoginScreen
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: child,
+      ),
+      child: auth.isAuthenticated
+          ? const MainWorkspace(key: ValueKey('main_workspace'))
+          : const LoginScreen(key: ValueKey('admin_login_screen')),
     );
   }
 }

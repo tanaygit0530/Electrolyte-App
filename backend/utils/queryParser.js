@@ -72,8 +72,9 @@ function parseQuery(text) {
     keywords: [...new Set(keywords)],
   };
 
-  console.log('[queryParser] Input:', text);
-  console.log('[queryParser] Parsed result:', parsedResult);
+  const logger = require('./logger');
+  logger.debug('[queryParser] Input:', text);
+  logger.debug('[queryParser] Parsed result:', parsedResult);
 
   return parsedResult;
 }

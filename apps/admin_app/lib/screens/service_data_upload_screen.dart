@@ -139,36 +139,40 @@ class ServiceDataUploadScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Upload Progress Bar & Spinner
+          // Upload & Real-Time Background Job Processing Display
           if (provider.isUploading) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: (provider.uploadProgress > 0 && provider.uploadProgress < 1.0)
+                value: (!provider.isProcessingJob && provider.uploadProgress > 0 && provider.uploadProgress < 1.0)
                     ? provider.uploadProgress
                     : null,
-                minHeight: 10,
+                minHeight: 8,
                 backgroundColor: AdminTheme.darkBackground,
-                valueColor: const AlwaysStoppedAnimation<Color>(AdminTheme.primaryYellow),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  provider.isProcessingJob ? AdminTheme.accentEmerald : AdminTheme.primaryYellow,
+                ),
               ),
             ),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.2,
-                    color: AdminTheme.primaryYellow,
+                    color: provider.isProcessingJob ? AdminTheme.accentEmerald : AdminTheme.primaryYellow,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  provider.statusText ?? 'Uploading and processing file...',
-                  style: const TextStyle(
-                    color: AdminTheme.primaryYellow,
+                  provider.isProcessingJob
+                      ? (provider.stageText ?? 'Processing service records on cloud server...')
+                      : (provider.statusText ?? 'Uploading file...'),
+                  style: TextStyle(
+                    color: provider.isProcessingJob ? Colors.white : AdminTheme.primaryYellow,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                     fontFamily: 'Poppins',
@@ -176,6 +180,75 @@ class ServiceDataUploadScreen extends StatelessWidget {
                 ),
               ],
             ),
+            if (provider.isProcessingJob) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AdminTheme.darkBackground,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AdminTheme.borderColor),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Rows Scanned
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.dataset_outlined, size: 18, color: AdminTheme.primaryYellow),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${provider.processedRows} Rows Scanned',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(height: 20, width: 1, color: AdminTheme.borderColor),
+                    // Repeat Risk Counter
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 18, color: AdminTheme.errorColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${provider.liveFoundWithin60} Repeat Risk (<60d)',
+                          style: const TextStyle(
+                            color: AdminTheme.errorColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(height: 20, width: 1, color: AdminTheme.borderColor),
+                    // Safe Records Counter
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 18, color: AdminTheme.accentEmerald),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${provider.liveOlderThan60} Safe (>60d)',
+                          style: const TextStyle(
+                            color: AdminTheme.accentEmerald,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
           ],
 
@@ -251,7 +324,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
           child: _buildKpiCard(
             title: 'Total Records Ingested',
             value: summary.totalRecords.toString(),
-            subtitle: 'Processed from sheet',
+            // subtitle: 'Processed from sheet',
             icon: Icons.list_alt_rounded,
             accentColor: AdminTheme.primaryYellow,
           ),
@@ -262,7 +335,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
           child: _buildKpiCard(
             title: 'Repeat Risk (< 60 Days)',
             value: summary.foundWithin60Days.toString(),
-            subtitle: "Don't close call • Repeat risk",
+            // subtitle: "Don't close call • Repeat risk",
             icon: Icons.warning_amber_rounded,
             accentColor: AdminTheme.errorColor,
             isHighlighted: true,
@@ -274,7 +347,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
           child: _buildKpiCard(
             title: 'Safe to Close (> 60 Days)',
             value: summary.olderThan60Days.toString(),
-            subtitle: 'Beyond 60 days • Safe to close',
+            // subtitle: 'Beyond 60 days • Safe to close',
             icon: Icons.check_circle_outline_rounded,
             accentColor: AdminTheme.accentEmerald,
           ),
@@ -286,7 +359,7 @@ class ServiceDataUploadScreen extends StatelessWidget {
   Widget _buildKpiCard({
     required String title,
     required String value,
-    required String subtitle,
+    // required String subtitle,
     required IconData icon,
     required Color accentColor,
     bool isHighlighted = false,
@@ -344,15 +417,15 @@ class ServiceDataUploadScreen extends StatelessWidget {
                     fontFamily: 'Poppins',
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AdminTheme.textSecondary.withOpacity(0.6),
-                    fontFamily: 'Poppins',
-                  ),
-                ),
+                // const SizedBox(height: 2),
+                // Text(
+                //   subtitle,
+                //   style: TextStyle(
+                //     fontSize: 11,
+                //     color: AdminTheme.textSecondary.withOpacity(0.6),
+                //     fontFamily: 'Poppins',
+                //   ),
+                // ),
               ],
             ),
           ),

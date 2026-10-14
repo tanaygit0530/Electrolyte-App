@@ -80,7 +80,17 @@ function getVocabulary() {
   return vocabularyCache;
 }
 
+/**
+ * Invalidate the vocabulary cache when products change.
+ */
+function invalidateVocabulary() {
+  vocabularyCache = null;
+  vocabularyPromise = null;
+  console.log('[vocabularyService] Vocabulary cache invalidated.');
+}
+
 module.exports = {
   loadVocabulary,
   getVocabulary,
+  invalidateVocabulary,
 };

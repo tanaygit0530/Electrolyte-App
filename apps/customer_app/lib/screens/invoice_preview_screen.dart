@@ -27,6 +27,7 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
         foregroundColor: Colors.black,
         actions: [
           IconButton(
+            tooltip: 'Share invoice',
             icon: const Icon(Icons.share),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(

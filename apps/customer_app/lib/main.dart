@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:shared_core/shared_core.dart';
@@ -19,9 +20,10 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        Provider<SharedApiService>.value(value: apiService),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => OrderProvider(apiService)),
         ChangeNotifierProvider(create: (_) => ChatHistoryProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
@@ -41,26 +43,72 @@ class SparePartsApp extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
-      title: 'Spare Parts Management',
+      title: 'Electrolyte Technician',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          // Render loading screen if verifying persisted credentials
-          if (auth.isLoading && !auth.isAuthenticated) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryYellow),
-              ),
-            );
-          }
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'IN'),
+        Locale('en', 'US'),
+        Locale('en', 'GB'),
+        Locale('en'),
+      ],
+      home: const AppStartupFlow(),
+    );
+  }
+}
 
-          // Route dynamically based on session status
-          return auth.isAuthenticated ? const MainScreen() : const LoginScreen();
-        },
+class AppStartupFlow extends StatefulWidget {
+  const AppStartupFlow({super.key});
+
+  @override
+  State<AppStartupFlow> createState() => _AppStartupFlowState();
+}
+
+class _AppStartupFlowState extends State<AppStartupFlow> {
+  bool _hasIntroFinished = false;
+
+  void _onIntroFinished() {
+    if (mounted) {
+      setState(() {
+        _hasIntroFinished = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    final Widget currentScreen;
+    if (!_hasIntroFinished || (auth.isLoading && !auth.isAuthenticated)) {
+      currentScreen = IntroFlashScreen(
+        key: const ValueKey('intro_flash_screen'),
+        minDisplayDuration: const Duration(milliseconds: 2300),
+        subtitle: 'POWERING RELIABLE SERVICE',
+        onFinished: _onIntroFinished,
+      );
+    } else if (auth.isAuthenticated) {
+      currentScreen = const MainScreen(key: ValueKey('main_screen'));
+    } else {
+      currentScreen = const LoginScreen(key: ValueKey('login_screen'));
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: child,
       ),
+      child: currentScreen,
     );
   }
 }

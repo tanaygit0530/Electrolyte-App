@@ -3,7 +3,23 @@ const ExcelJS = require('exceljs');
 const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { pool } = require('../config/neondb');
+
+/**
+ * In-memory registry for real-time background service sheet ingestion jobs
+ */
+const activeJobs = new Map();
+
+// Auto-cleanup jobs older than 1 hour to prevent memory leaks
+setInterval(() => {
+  const oneHourAgo = Date.now() - 3600000;
+  for (const [id, job] of activeJobs.entries()) {
+    if (job.completedAt && job.completedAt < oneHourAgo) {
+      activeJobs.delete(id);
+    }
+  }
+}, 600000);
 
 /**
  * Helper to parse various date formats from Excel/CSV
@@ -102,7 +118,7 @@ exports.checkSerialNumber = async (req, res) => {
         repeatRisk: false,
         canCloseCall: true,
         serialNumber: cleanSerial,
-        message: 'Safe to close the call. No prior service record found in the database.',
+        message: 'Safe to close',
         record: null
       });
     }
@@ -124,7 +140,7 @@ exports.checkSerialNumber = async (req, res) => {
         serialNumber: row.serial_no,
         serviceDate: displayEndDate,
         endDate: displayEndDate,
-        message: `Don't close the call, it may come in repeat. Serial number was serviced ${daysAgo} days ago (End Date: ${displayEndDate}), within the 60-day repeat risk window.`,
+        message: 'Repeat risk',
         record: {
           caseNumber: row.case_number,
           customerName: row.customer_name,
@@ -142,11 +158,6 @@ exports.checkSerialNumber = async (req, res) => {
         }
       });
     } else {
-      let notFoundMsg = `Safe to close the call. Last service End Date was ${daysAgo} days ago (${displayEndDate}), beyond the 60-day repeat window.`;
-      if (!hasValidEndDate) {
-        notFoundMsg = `Safe to close the call. No valid recent End Date found within the 60-day repeat window.`;
-      }
-
       return res.json({
         success: true,
         status: 'SAFE TO CLOSE',
@@ -157,7 +168,7 @@ exports.checkSerialNumber = async (req, res) => {
         serialNumber: row.serial_no,
         serviceDate: displayEndDate,
         endDate: displayEndDate,
-        message: notFoundMsg,
+        message: 'Safe to close',
         record: {
           caseNumber: row.case_number,
           customerName: row.customer_name,
@@ -309,30 +320,63 @@ function buildColMap(headers) {
 }
 
 /**
- * Extract and normalize a single row into standard record object
+ * Fast check if an end_date value is within the 60-day window [now - 60 days, now].
+ * Returns { isWithin60: boolean, parsedDate: Date|null, displayDate: string }
  */
-function extractRowRecord(vals, colMap, now) {
-  if (!vals || vals.length === 0) return null;
+function evaluateEndDate60Days(val, nowMs, sixtyDaysAgoMs, currentYear) {
+  if (!val) {
+    return { isWithin60: false, parsedDate: null, displayDate: 'N/A' };
+  }
+
+  let parsed = null;
+  let display = 'N/A';
+
+  if (val instanceof Date) {
+    parsed = isNaN(val.getTime()) ? null : val;
+    display = parsed ? parsed.toISOString().split('T')[0] : 'N/A';
+  } else if (typeof val === 'number') {
+    const t = Math.round((val - 25569) * 86400 * 1000);
+    parsed = isNaN(t) ? null : new Date(t);
+    display = parsed ? parsed.toISOString().split('T')[0] : String(val);
+  } else {
+    const str = String(val).trim();
+    if (!str) {
+      return { isWithin60: false, parsedDate: null, displayDate: 'N/A' };
+    }
+    display = str;
+
+    // Fast check for DD/MM/YYYY or DD-MM-YYYY
+    const c2 = str.charCodeAt(2);
+    if ((c2 === 47 || c2 === 45) && (str.charCodeAt(5) === 47 || str.charCodeAt(5) === 45)) {
+      const year = parseInt(str.substring(6, 10), 10);
+      // If year is older than currentYear - 1 (e.g. 2021-2024 when now is 2026), it's definitely older than 60 days!
+      if (!isNaN(year) && year < currentYear - 1) {
+        return { isWithin60: false, parsedDate: null, displayDate: display };
+      }
+    }
+
+    parsed = parseDateValue(str);
+    if (!display && parsed) {
+      display = parsed.toISOString().split('T')[0];
+    }
+  }
+
+  if (!parsed) {
+    return { isWithin60: false, parsedDate: null, displayDate: display };
+  }
+
+  const t = parsed.getTime();
+  const isWithin60 = (t >= sixtyDaysAgoMs && t <= nowMs);
+  return { isWithin60, parsedDate: parsed, displayDate: display };
+}
+
+/**
+ * Extract full 35-column record object (only called for rows being saved to database)
+ */
+function extractFullRecord(vals, colMap, serialNo, parsedEndDate, displayEndDate) {
   const toStr = (v) => (v !== null && v !== undefined && String(v).trim() !== '') ? String(v).trim() : null;
 
-  const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
-  const serialNo = toStr(rawSerial);
-  if (!serialNo || serialNo === 'null' || serialNo === 'undefined' || serialNo.toUpperCase() === 'NO BARCODE') {
-    return null;
-  }
-
-  const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
-  const parsedEndDate = parseDateValue(rawEndDate);
-  const rawClosedDate = colMap.closedDate !== -1 ? vals[colMap.closedDate] : vals[35];
-
-  let displayEndDate = 'N/A';
-  if (rawEndDate && typeof rawEndDate === 'string') {
-    displayEndDate = rawEndDate.trim();
-  } else if (parsedEndDate) {
-    displayEndDate = parsedEndDate.toISOString().split('T')[0];
-  }
-
-  const recordObj = {
+  return {
     case_number: toStr(colMap.case !== -1 ? vals[colMap.case] : vals[1]),
     created_date: parseDateValue(colMap.createdDate !== -1 ? vals[colMap.createdDate] : vals[2]),
     work_order_line_item: toStr(colMap.workOrder !== -1 ? vals[colMap.workOrder] : vals[3]),
@@ -365,20 +409,8 @@ function extractRowRecord(vals, colMap, now) {
     serial_no: serialNo,
     replacement_serial_no: toStr(colMap.replSerial !== -1 ? vals[colMap.replSerial] : vals[32]),
     type_of_resolution: toStr(colMap.resolution !== -1 ? vals[colMap.resolution] : vals[34]),
-    closed_date: toStr(rawClosedDate)
+    closed_date: toStr(colMap.closedDate !== -1 ? vals[colMap.closedDate] : vals[35])
   };
-
-  let isWithin60 = false;
-  let daysAgo = null;
-  if (parsedEndDate) {
-    const timeDiff = now.getTime() - parsedEndDate.getTime();
-    daysAgo = Math.round(timeDiff / (24 * 60 * 60 * 1000));
-    if (daysAgo >= 0 && daysAgo <= 60) {
-      isWithin60 = true;
-    }
-  }
-
-  return { recordObj, isWithin60, daysAgo, serialNo, displayEndDate };
 }
 
 /**
@@ -470,25 +502,22 @@ async function streamReadServiceFile(filePath, onRow, onHeaders) {
 }
 
 /**
- * 2. Bulk Upload Service Records (Admin App)
- * POST /api/service-records/upload
+/**
+ * Asynchronously process an uploaded service file in the background
  */
-exports.uploadServiceFile = async (req, res) => {
-  let filePath = null;
+async function processServiceFileJob(jobId, filePath, originalName, uploadedBy) {
+  const job = activeJobs.get(jobId);
+  if (!job) return;
+
+  const parseStart = Date.now();
   let client = null;
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded. Please provide an .xlsx, .xls, or .csv file.' });
-    }
-
-    filePath = req.file.path;
-    const originalName = req.file.originalname;
-    const uploadedBy = req.admin ? req.admin.email : 'Admin';
-    const parseStart = Date.now();
-
-    console.log(`Starting memory-efficient streaming ingestion for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)...`);
-
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const sixtyDaysAgoMs = now.getTime() - (60 * 24 * 60 * 60 * 1000);
+    const nowMs = now.getTime();
+
     let colMap = null;
     let totalRecords = 0;
     let foundWithin60Days = 0;
@@ -497,31 +526,51 @@ exports.uploadServiceFile = async (req, res) => {
     const foundEntries = [];
     const activeFoundRows = [];
 
-    // Stream pass 1: Perform 60-day audit in ~4-7 seconds, collecting ONLY active 60-day records in memory
+    job.stage = 'Auditing 60-day window and identifying repeat risks...';
+
+    // Stream pass 1: Perform 60-day audit, updating live job counters
     await streamReadServiceFile(
       filePath,
       (vals, rowNumber) => {
         if (!colMap) return;
-        const result = extractRowRecord(vals, colMap, now);
-        if (!result) return;
+        const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
+        if (!rawSerial) return;
+        const serialStr = String(rawSerial).trim();
+        if (!serialStr || serialStr === 'null' || serialStr === 'undefined' || serialStr.toUpperCase() === 'NO BARCODE') {
+          return;
+        }
 
         totalRecords++;
-        if (result.isWithin60) {
+
+        const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
+        const { isWithin60, parsedDate, displayDate } = evaluateEndDate60Days(rawEndDate, nowMs, sixtyDaysAgoMs, currentYear);
+
+        if (isWithin60) {
           foundWithin60Days++;
+          const rec = extractFullRecord(vals, colMap, serialStr, parsedDate, displayDate);
+          activeFoundRows.push(rec);
+
+          const daysAgo = Math.round((nowMs - parsedDate.getTime()) / 86400000);
           foundEntries.push({
-            serialNumber: result.serialNo,
-            date: result.displayEndDate,
-            endDate: result.displayEndDate,
-            daysAgo: result.daysAgo,
-            caseNumber: result.recordObj.case_number,
-            customerName: result.recordObj.customer_name,
-            complaint: result.recordObj.customer_complaint,
-            repair: result.recordObj.repair,
-            status: result.recordObj.wo_status
+            serialNumber: serialStr,
+            date: displayDate,
+            endDate: displayDate,
+            daysAgo: daysAgo,
+            caseNumber: rec.case_number,
+            customerName: rec.customer_name,
+            complaint: rec.customer_complaint,
+            repair: rec.repair,
+            status: rec.wo_status
           });
-          activeFoundRows.push(result.recordObj);
         } else {
           olderThan60Days++;
+        }
+
+        // Live progress update every 100 rows
+        if (totalRecords % 100 === 0) {
+          job.processedRows = totalRecords;
+          job.foundWithin60Days = foundWithin60Days;
+          job.olderThan60Days = olderThan60Days;
         }
       },
       (headersVals) => {
@@ -530,16 +579,23 @@ exports.uploadServiceFile = async (req, res) => {
       }
     );
 
+    job.processedRows = totalRecords;
+    job.foundWithin60Days = foundWithin60Days;
+    job.olderThan60Days = olderThan60Days;
+
     if (totalRecords === 0) {
+      job.status = 'failed';
+      job.error = 'The uploaded file does not contain valid serial number records.';
+      job.completedAt = Date.now();
       if (filePath && fs.existsSync(filePath)) {
         try { fs.unlinkSync(filePath); } catch (e) {}
       }
-      return res.status(400).json({ error: 'The uploaded file does not contain valid serial number records.' });
+      return;
     }
 
-    console.log(`Audit complete in ${((Date.now() - parseStart) / 1000).toFixed(1)}s: Total ${totalRecords}, Found within 60 days: ${foundWithin60Days}, Older: ${olderThan60Days}`);
+    job.stage = 'Syncing repeat risk records to database...';
 
-    // Persist active found records and audit history log synchronously
+    // Persist active found records and audit history log synchronously in DB transaction
     client = await pool.connect();
     await client.query('BEGIN');
 
@@ -559,25 +615,24 @@ exports.uploadServiceFile = async (req, res) => {
     client.release();
     client = null;
 
-    // Return response to Admin App immediately (UI finishes loading in seconds!)
-    res.json({
-      success: true,
-      message: `File processed successfully. ${foundWithin60Days} repeat risk entries found within the active 60-day window out of ${totalRecords} records.`,
-      uploadId,
-      fileName: originalName,
-      summary: {
-        totalRecords,
-        foundWithin60Days,
-        olderThan60Days
-      },
-      foundEntries: foundEntries
-    });
+    // Mark job as completed - UI can now display final results immediately!
+    job.status = 'completed';
+    job.stage = 'Completed';
+    job.uploadId = uploadId;
+    job.summary = {
+      totalRecords,
+      foundWithin60Days,
+      olderThan60Days
+    };
+    job.foundEntries = foundEntries;
+    job.completedAt = Date.now();
 
-    // Background streaming of remaining historical records (chunks of 2,000 via UNNEST, minimal memory)
-    setImmediate(async () => {
+    console.log(`Job ${jobId} completed in ${((Date.now() - parseStart) / 1000).toFixed(1)}s: Total ${totalRecords}, Found within 60 days: ${foundWithin60Days}, Older: ${olderThan60Days}`);
+
+    // Throttled background streaming of remaining historical records (with sequential queue and event-loop yielding)
+    setTimeout(async () => {
       let bgClient = null;
       try {
-        console.log(`Background streaming ingestion starting for ${olderThan60Days} historical records...`);
         bgClient = await pool.connect();
         let histBatch = [];
         const BATCH_SIZE = 2500;
@@ -587,14 +642,25 @@ exports.uploadServiceFile = async (req, res) => {
           filePath,
           (vals) => {
             if (!colMap) return;
-            const result = extractRowRecord(vals, colMap, now);
-            if (!result || result.isWithin60) return; // already inserted in pass 1
+            const rawSerial = colMap.serial !== -1 ? vals[colMap.serial] : vals[31];
+            if (!rawSerial) return;
+            const serialStr = String(rawSerial).trim();
+            if (!serialStr || serialStr === 'null' || serialStr === 'undefined' || serialStr.toUpperCase() === 'NO BARCODE') return;
 
-            histBatch.push(result.recordObj);
+            const rawEndDate = colMap.endDate !== -1 ? vals[colMap.endDate] : vals[15];
+            const { isWithin60, parsedDate, displayDate } = evaluateEndDate60Days(rawEndDate, nowMs, sixtyDaysAgoMs, currentYear);
+            if (isWithin60) return; // already inserted in pass 1
+
+            const rec = extractFullRecord(vals, colMap, serialStr, parsedDate, displayDate);
+            histBatch.push(rec);
+
             if (histBatch.length >= BATCH_SIZE) {
               const toInsert = histBatch;
               histBatch = [];
-              queuePromise = queuePromise.then(() => insertBatchUnnest(bgClient, toInsert));
+              queuePromise = queuePromise.then(async () => {
+                await insertBatchUnnest(bgClient, toInsert);
+                await new Promise(r => setTimeout(r, 200));
+              });
             }
           }
         );
@@ -602,34 +668,123 @@ exports.uploadServiceFile = async (req, res) => {
         if (histBatch.length > 0) {
           const finalBatch = histBatch;
           histBatch = [];
-          queuePromise = queuePromise.then(() => insertBatchUnnest(bgClient, finalBatch));
+          queuePromise = queuePromise.then(async () => {
+            await insertBatchUnnest(bgClient, finalBatch);
+          });
         }
 
         await queuePromise;
-        console.log(`Background historical records ingestion complete for "${originalName}".`);
       } catch (bgErr) {
-        console.error('Background historical streaming ingestion error:', bgErr);
+        console.error('Background historical streaming error for job', jobId, bgErr);
       } finally {
         if (bgClient) bgClient.release();
         if (filePath && fs.existsSync(filePath)) {
           try { fs.unlinkSync(filePath); } catch (e) {}
         }
       }
-    });
+    }, 1000);
 
   } catch (error) {
     if (client) {
       try { await client.query('ROLLBACK'); } catch (rbErr) {}
+      client.release();
     }
-    console.error('Service Data Upload Error:', error);
+    console.error(`Job ${jobId} failed:`, error);
+    job.status = 'failed';
+    job.error = error.message || 'Failed to process service sheet.';
+    job.completedAt = Date.now();
     if (filePath && fs.existsSync(filePath)) {
       try { fs.unlinkSync(filePath); } catch (e) {}
     }
-    return res.status(500).json({ error: error.message || 'Failed to process service data upload' });
-  } finally {
-    if (client) {
-      client.release();
+  }
+}
+
+/**
+ * 2. Bulk Upload Service Records (Admin App)
+ * POST /api/service-records/upload
+ * Immediately accepts file upload and dispatches asynchronous background job
+ */
+exports.uploadServiceFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded. Please provide an .xlsx, .xls, or .csv file.' });
     }
+
+    const filePath = req.file.path;
+    const originalName = req.file.originalname;
+    const uploadedBy = req.admin ? req.admin.email : 'Admin';
+    const jobId = crypto.randomUUID();
+
+    const job = {
+      id: jobId,
+      status: 'processing',
+      stage: 'File uploaded. Initializing background audit...',
+      fileName: originalName,
+      fileSize: req.file.size,
+      uploadedBy,
+      startedAt: Date.now(),
+      completedAt: null,
+      processedRows: 0,
+      foundWithin60Days: 0,
+      olderThan60Days: 0,
+      summary: null,
+      foundEntries: [],
+      error: null
+    };
+
+    activeJobs.set(jobId, job);
+
+    console.log(`Accepted upload for "${originalName}" (${(req.file.size / (1024 * 1024)).toFixed(2)} MB). Dispatched job ${jobId}`);
+
+    // Immediately return 202 Accepted to Admin App so connection never times out!
+    res.status(202).json({
+      success: true,
+      jobId,
+      fileName: originalName,
+      message: 'File received. Background audit started.'
+    });
+
+    // Run job in background
+    setImmediate(() => {
+      processServiceFileJob(jobId, filePath, originalName, uploadedBy);
+    });
+
+  } catch (error) {
+    console.error('Service Data Upload Initiation Error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to initiate service upload' });
+  }
+};
+
+/**
+ * 2b. Poll Background Ingestion Job Status
+ * GET /api/service-records/job-status/:jobId
+ */
+exports.getJobStatus = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = activeJobs.get(jobId);
+    if (!job) {
+      return res.status(404).json({ success: false, error: 'Job not found or expired' });
+    }
+
+    return res.json({
+      success: true,
+      job: {
+        id: job.id,
+        status: job.status,
+        stage: job.stage,
+        fileName: job.fileName,
+        processedRows: job.processedRows,
+        foundWithin60Days: job.foundWithin60Days,
+        olderThan60Days: job.olderThan60Days,
+        summary: job.summary,
+        foundEntries: job.status === 'completed' ? job.foundEntries : [],
+        error: job.error
+      }
+    });
+  } catch (error) {
+    console.error('Get Job Status Error:', error);
+    return res.status(500).json({ error: 'Failed to retrieve job status' });
   }
 };
 

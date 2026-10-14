@@ -2,11 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_core/shared_core.dart';
 import '../models/serial_check_result.dart';
-import '../services/api_service.dart';
 
 class SerialCheckProvider extends ChangeNotifier {
-  final ApiService _apiService;
+  final SharedApiService _apiService;
   final ImagePicker _imagePicker = ImagePicker();
 
   bool _isLoading = false;
