@@ -79,12 +79,12 @@ class SharedApiService {
     return response;
   }
 
-  /// Secure Customer (Technician) Login
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  /// Secure Customer (Technician / Admin) Login
+  Future<Map<String, dynamic>> login(String identifier, String password) async {
     final response = await _client.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password}),
+      body: json.encode({'email': identifier.trim(), 'identifier': identifier.trim(), 'password': password}),
     ).timeout(_timeout);
 
     if (response.statusCode == 200) {
@@ -232,6 +232,62 @@ class SharedApiService {
         throw Exception('Server returned status ${response.statusCode}');
       }
     }
+  }
+
+  /// Create technician credentials (Admin only)
+  Future<Map<String, dynamic>> createTechnician(Map<String, dynamic> data) async {
+    final response = await _post(
+      '$baseUrl/api/admin/users',
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(data),
+    );
+    final body = json.decode(response.body);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Failed to create technician account');
+    }
+  }
+
+  /// Fetch all users / technicians (Admin only)
+  Future<List<dynamic>> getTechnicians() async {
+    final response = await _get('$baseUrl/api/admin/users');
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load technicians list');
+    }
+  }
+
+  /// Update / allow technician status (Admin only)
+  Future<Map<String, dynamic>> updateUserStatus(int userId, bool isActive) async {
+    final mergedHeaders = await _getHeaders(extraHeaders: {'Content-Type': 'application/json'});
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/api/admin/users/$userId/status'),
+      headers: mergedHeaders,
+      body: json.encode({'isActive': isActive}),
+    ).timeout(_timeout);
+    if (response.statusCode == 401) {
+      onSessionExpired?.call();
+    }
+    final body = json.decode(response.body);
+    if (response.statusCode == 200) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Failed to update user status');
+    }
+  }
+
+  /// Preview next auto-generated Technician ID (Admin only)
+  Future<String> getNextTechnicianId() async {
+    try {
+      final response = await _get('$baseUrl/api/admin/next-technician-id');
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        return body['nextId'] ?? 'TECH-0001';
+      }
+    } catch (_) {}
+    return 'TECH-0001';
   }
 }
 

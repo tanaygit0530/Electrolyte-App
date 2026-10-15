@@ -18,6 +18,10 @@ const adminAuth = (req, res, next) => {
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Requires admin privileges.' });
+    }
+
     // Attach admin info to request
     req.admin = decoded;
     next();

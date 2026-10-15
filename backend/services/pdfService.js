@@ -256,6 +256,10 @@ const buildUnifiedDetailsBox = (invoiceData, formattedDate) => {
   const serialLine = invoiceData.serialNumber ? `<p><b>SERIAL NO:</b> ${invoiceData.serialNumber}</p>` : '';
   const phoneLine = invoiceData.customerPhone ? `<p><b>MOBILE NO:</b> ${invoiceData.customerPhone}</p>` : '';
 
+  const preparedByText = invoiceData.technicianId
+    ? `${invoiceData.preparedBy || 'Technician'} (${invoiceData.technicianId})`
+    : (invoiceData.preparedBy || 'Technician');
+
   return `
     <div class="details-container">
       <div class="col-left">
@@ -271,7 +275,7 @@ const buildUnifiedDetailsBox = (invoiceData, formattedDate) => {
         <p><b>CASE ID:</b> ${invoiceData.caseId || '-'}</p>
         <p><b>BILL DATE:</b> ${formattedDate}</p>
         <p><b>BRAND:</b> ${brandName}</p>
-        <p><b>PREPARED BY:</b> ${invoiceData.preparedBy || 'DIPAK MOHITE'}</p>
+        <p><b>PREPARED BY:</b> ${preparedByText}</p>
       </div>
     </div>
   `;

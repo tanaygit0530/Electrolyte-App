@@ -14,6 +14,8 @@ router.get('/stock-history', adminAuth, adminController.getStockHistory);
 router.get('/price-history', adminAuth, adminController.getPriceHistory);
 router.get('/users', adminAuth, adminController.getUsers);
 router.post('/users', adminAuth, adminController.createUser);
+router.patch('/users/:id/status', adminAuth, adminController.updateUserStatus);
+router.get('/next-technician-id', adminAuth, adminController.getNextTechnicianId);
 
 // Reports routes
 router.get('/reports/technician-revenue', adminAuth, adminController.getTechnicianRevenueReport);

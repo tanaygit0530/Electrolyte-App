@@ -39,7 +39,7 @@ class _BillingScreenState extends State<BillingScreen> {
   void initState() {
     super.initState();
     final auth = context.read<AuthProvider>();
-    _preparedByController.text = auth.name;
+    _preparedByController.text = "${auth.name} (${auth.technicianId})";
   }
 
   @override
@@ -88,6 +88,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
               _buildTextField("Customer Name", Icons.person, "Enter name", controller: _customerNameController),
               _buildTextField("Customer Email", Icons.email, "Enter email", controller: _customerEmailController),
+              _buildTextField("Prepared By", Icons.badge_outlined, "Technician", controller: _preparedByController, enabled: false),
 
               _buildDropdownField(
                 "Select Brand",
@@ -403,7 +404,9 @@ class _BillingScreenState extends State<BillingScreen> {
           "rate": p.price,
         }).toList(),
         "serialNumber": _serialNumberController.text,
-        "preparedBy": _preparedByController.text,
+        "preparedBy": context.read<AuthProvider>().name,
+        "technicianId": context.read<AuthProvider>().technicianId,
+        "technicianName": context.read<AuthProvider>().name,
         "caseId": _caseIdController.text,
         "serviceCharge": double.tryParse(_serviceChargeController.text) ?? 0,
         "gstEnabled": _gstEnabled,

@@ -113,9 +113,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
           itemCount: provider.invoices.length,
           itemBuilder: (context, index) {
             final invoice = provider.invoices[index];
+            final preparedByDisplay = (invoice.technicianId != null && invoice.technicianId!.isNotEmpty)
+                ? "${invoice.preparedBy ?? invoice.technicianName} (${invoice.technicianId})"
+                : (invoice.preparedBy ?? (invoice.technicianName.isNotEmpty ? invoice.technicianName : 'N/A'));
+
             return _HistoryCard(
               title: invoice.invoiceNumber.isNotEmpty ? invoice.invoiceNumber : "Invoice #${invoice.id}",
-              subtitle: "Customer: ${invoice.customerName}\nPrepared by: ${invoice.preparedBy ?? 'N/A'}",
+              subtitle: "Customer: ${invoice.customerName}\nPrepared by: $preparedByDisplay",
               date: DateFormat('dd MMM yyyy, hh:mm a').format(invoice.createdAt),
               status: "₹${invoice.totalAmount.toStringAsFixed(2)}",
               icon: Icons.receipt_long_outlined,

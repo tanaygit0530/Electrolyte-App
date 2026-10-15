@@ -10,12 +10,15 @@ class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = false;
   bool _sessionExpired = false;
+  String? _name;
+  String? _technicianId;
   String? _email;
   int? _id;
   String? _role;
   String? _phone;
   String? _token;
   String? _errorMessage;
+  bool _isActive = true;
 
   AuthProvider(this._apiService) {
     _apiService.onSessionExpired = _handleSessionExpired;
@@ -33,8 +36,17 @@ class AuthProvider extends ChangeNotifier {
   String? get phone => _phone;
   String? get token => _token;
   String? get errorMessage => _errorMessage;
+  bool get isAdmin => _role?.toLowerCase() == 'admin';
+  bool get isActive => _isActive;
 
-  String get name => _getNameFromEmail(_email);
+  String get technicianId => _technicianId ?? (_id != null ? 'TECH-${_id.toString().padLeft(4, '0')}' : 'TECH-UNASSIGNED');
+
+  String get name {
+    if (_name != null && _name!.trim().isNotEmpty) {
+      return _name!.trim();
+    }
+    return _getNameFromEmail(_email);
+  }
 
   String _getNameFromEmail(String? email) {
     if (email == null || email.isEmpty) return "Technician";
@@ -50,6 +62,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _email = prefs.getString('customer_email');
+      _name = prefs.getString('customer_name');
+      _technicianId = prefs.getString('customer_technician_id');
       _id = prefs.getInt('customer_id');
       _role = prefs.getString('customer_role');
       _phone = prefs.getString('customer_phone');
@@ -89,7 +103,9 @@ class AuthProvider extends ChangeNotifier {
       
       final token = result['token'] as String;
       final userInfo = result['user'];
-      final userEmail = userInfo != null ? userInfo['email'] as String : email;
+      final userEmail = userInfo != null ? userInfo['email'] as String? : email;
+      final userName = userInfo != null ? userInfo['name'] as String? : null;
+      final userTechId = userInfo != null ? (userInfo['technicianId'] ?? userInfo['technician_id']) as String? : null;
       final userRole = userInfo != null ? (userInfo['role'] as String? ?? 'technician') : 'technician';
       final userPhone = userInfo != null ? userInfo['phone'] as String? : null;
       
@@ -102,7 +118,9 @@ class AuthProvider extends ChangeNotifier {
       await _secureStorage.write(key: 'customer_token', value: token);
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('customer_email', userEmail);
+      if (userEmail != null) await prefs.setString('customer_email', userEmail);
+      if (userName != null) await prefs.setString('customer_name', userName);
+      if (userTechId != null) await prefs.setString('customer_technician_id', userTechId);
       await prefs.setString('customer_role', userRole);
       if (userPhone != null) {
         await prefs.setString('customer_phone', userPhone);
@@ -113,9 +131,12 @@ class AuthProvider extends ChangeNotifier {
 
       _token = token;
       _email = userEmail;
+      _name = userName;
+      _technicianId = userTechId;
       _id = userId;
       _role = userRole;
       _phone = userPhone;
+      _isActive = userInfo != null ? (userInfo['isActive'] ?? userInfo['is_active'] ?? true) : true;
       _isAuthenticated = true;
       _isLoading = false;
       notifyListeners();
@@ -138,12 +159,16 @@ class AuthProvider extends ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('customer_email');
+      await prefs.remove('customer_name');
+      await prefs.remove('customer_technician_id');
       await prefs.remove('customer_id');
       await prefs.remove('customer_role');
       await prefs.remove('customer_phone');
 
       _token = null;
       _email = null;
+      _name = null;
+      _technicianId = null;
       _id = null;
       _role = null;
       _phone = null;

@@ -7,6 +7,7 @@ const formatInvoice = (inv) => ({
   id: String(inv.id),
   invoiceNumber: inv.invoice_number,
   technicianName: inv.technician_name,
+  technicianId: inv.technician_id,
   customerName: inv.customer_name,
   customerEmail: inv.customer_email,
   customerPhone: inv.customer_phone,
@@ -94,19 +95,23 @@ const createInvoice = async (req, res) => {
     const itemsJson = JSON.stringify(items);
     const tempInvoiceNumber = `TEMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+    const effectivePreparedBy = preparedBy || req.user.name || 'Technician';
+    const effectiveTechnicianId = payload.technicianId || req.user.technicianId || null;
+    const effectiveTechName = payload.technicianName || req.user.name || effectivePreparedBy;
+
     const invoiceRes = await pool.query(
       `INSERT INTO invoices (
         invoice_number, technician_name, customer_name, customer_email, customer_phone,
         items, sub_total, gst_amount, service_charge, total_amount, status,
         brand, serial_number, case_id, warranty_type, prepared_by, user_id,
-        mop, zip_code, remark
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        mop, zip_code, remark, technician_id
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Generated', $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING *`,
       [
-        tempInvoiceNumber, preparedBy || 'Technician', customerName, customerEmail, customerPhone,
+        tempInvoiceNumber, effectiveTechName, customerName, customerEmail, customerPhone,
         itemsJson, subTotal, gstAmount, sCharge, totalAmount,
-        brand, serialNumber, caseId, warrantyType, preparedBy, req.user.id,
-        payload.mop || 'UPI', payload.zipCode || '400001', payload.remark || ''
+        brand, serialNumber, caseId, warrantyType, effectivePreparedBy, req.user.id,
+        payload.mop || 'UPI', payload.zipCode || '400001', payload.remark || '', effectiveTechnicianId
       ]
     );
 
@@ -182,15 +187,30 @@ const createInvoice = async (req, res) => {
 
 const getInvoices = async (req, res) => {
   try {
-    const { search, status } = req.query;
+    const { search, status, technicianId, userId } = req.query;
 
     let queryStr = 'SELECT * FROM invoices';
-    const params = [req.user.id];
-    const conditions = ['user_id = $1'];
+    const params = [];
+    const conditions = [];
+
+    // If technician, restrict to own invoices; if admin, allow querying all or specific technician
+    if (req.user.role !== 'admin') {
+      params.push(req.user.id);
+      conditions.push(`user_id = $${params.length}`);
+    } else {
+      if (userId) {
+        params.push(userId);
+        conditions.push(`user_id = $${params.length}`);
+      }
+      if (technicianId) {
+        params.push(technicianId);
+        conditions.push(`technician_id = $${params.length}`);
+      }
+    }
 
     if (search) {
       params.push(`%${search}%`);
-      conditions.push(`(customer_name ILIKE $${params.length} OR invoice_number ILIKE $${params.length})`);
+      conditions.push(`(customer_name ILIKE $${params.length} OR invoice_number ILIKE $${params.length} OR prepared_by ILIKE $${params.length})`);
     }
 
     if (status) {

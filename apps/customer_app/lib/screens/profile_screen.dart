@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'technician_management_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -36,8 +37,8 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 32),
             _buildProfileItem(
               Icons.badge_outlined,
-              "Technician ID",
-              auth.id != null ? "TECH-#${auth.id.toString().padLeft(4, '0')}" : "TECH-UNASSIGNED",
+              auth.isAdmin ? "Administrator ID" : "Technician ID",
+              auth.technicianId,
             ),
             _buildProfileItem(
               Icons.work_outline,
@@ -54,6 +55,39 @@ class ProfileScreen extends StatelessWidget {
               "Assigned Service Hub",
               "Authorized Service Center",
             ),
+            if (auth.isAdmin) ...[
+              const SizedBox(height: 16),
+              Card(
+                color: isDark ? AppTheme.darkCardColor : Colors.amber.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.6)),
+                ),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppTheme.primaryYellow,
+                    child: Icon(Icons.admin_panel_settings, color: Colors.black, size: 22),
+                  ),
+                  title: const Text(
+                    'Technician Management',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  subtitle: const Text(
+                    'Create credentials & manage technician accounts',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TechnicianManagementScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             const Divider(height: 40),
             SwitchListTile(
               title: const Text("Dark Mode"),

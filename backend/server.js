@@ -98,7 +98,10 @@ app.use('/order', ordersRoutes);
 app.use('/orders', ordersRoutes);
 
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/invoice', invoiceRoutes);
+app.use('/api/invoice', invoiceRoutes);
+app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/service-records', serviceRecordsRoutes);
 

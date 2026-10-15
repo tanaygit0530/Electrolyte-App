@@ -147,11 +147,26 @@ const setup = async () => {
     console.log('- invoices table verified/created');
 
     // Run migrations to update existing tables if columns are missing
+    await pool.query(`CREATE SEQUENCE IF NOT EXISTS technician_id_seq START WITH 1;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS technician_id VARCHAR(50);`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_technician_id_unique ON users(technician_id) WHERE technician_id IS NOT NULL;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;`);
+    await pool.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL;`).catch(() => {});
+
     await pool.query(`
       ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
     await pool.query(`
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    `);
+    await pool.query(`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS technician_id VARCHAR(50);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_invoices_technician_id ON invoices(technician_id);
     `);
     await pool.query(`
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20) DEFAULT '400001';
@@ -246,12 +261,16 @@ const setup = async () => {
     if (checkAdminInUsers.rows.length === 0) {
       const passwordHash = await bcrypt.hash(adminPassword, 10);
       await pool.query(
-        "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')",
+        "INSERT INTO users (name, technician_id, email, password_hash, role, is_active) VALUES ('System Administrator', 'ADMIN-0001', $1, $2, 'admin', TRUE)",
         [adminEmail, passwordHash]
       );
       console.log(`- Default admin seeded successfully in users table`);
     } else {
-      console.log('- Admin user already exists in users table');
+      await pool.query(
+        "UPDATE users SET name = 'System Administrator', technician_id = 'ADMIN-0001', is_active = TRUE WHERE email = $1 AND (name IS NULL OR technician_id IS NULL)",
+        [adminEmail]
+      );
+      console.log('- Admin user already exists in users table (updated fields if missing)');
     }
 
     // 3. Seed default technician user if not exists
@@ -262,13 +281,38 @@ const setup = async () => {
     if (checkTech.rows.length === 0) {
       const passwordHash = await bcrypt.hash(techPassword, 10);
       await pool.query(
-        "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'technician')",
+        "INSERT INTO users (name, technician_id, email, password_hash, role, phone, is_active) VALUES ('Adesh Vartak', 'TECH-0001', $1, $2, 'technician', '+91 8090712828', TRUE)",
         [techEmail, passwordHash]
       );
       console.log(`- Default technician seeded successfully: ${techEmail} / ${techPassword}`);
     } else {
-      console.log('- Technician user already exists');
+      await pool.query(
+        "UPDATE users SET name = 'Adesh Vartak', technician_id = 'TECH-0001', is_active = TRUE WHERE email = $1 AND (name IS NULL OR technician_id IS NULL)",
+        [techEmail]
+      );
+      console.log('- Technician user already exists (updated fields if missing)');
     }
+
+    // Backfill any other users or invoices missing technician_id
+    await pool.query(`
+      UPDATE users SET name = 'Technician User', technician_id = 'TECH-' || LPAD(id::text, 4, '0') 
+      WHERE technician_id IS NULL AND role = 'technician';
+    `);
+    await pool.query(`
+      UPDATE invoices SET technician_id = 'TECH-0001' WHERE technician_id IS NULL;
+    `);
+
+    // Ensure sequence is higher than existing max technician number
+    await pool.query(`
+      SELECT setval('technician_id_seq', GREATEST(
+        COALESCE((
+          SELECT MAX(NULLIF(regexp_replace(technician_id, '[^0-9]', '', 'g'), '')::integer) 
+          FROM users 
+          WHERE technician_id LIKE 'TECH-%'
+        ), 1),
+        1
+      ), true);
+    `).catch(() => {});
 
     // 4. Seed initial products if not exists
     const dummyProducts = [

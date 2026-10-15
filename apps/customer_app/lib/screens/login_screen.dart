@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Technician Access Login',
+                        'Technician & Admin Access',
                         style: TextStyle(
                           fontSize: 14,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -124,12 +124,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 36),
 
-                      // Email Field
+                      // Technician ID or Email Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Technician Email',
+                            'Technician ID or Email',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -141,20 +141,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             controller: _emailController,
                             style: TextStyle(color: textColor, fontSize: 14),
-                            keyboardType: TextInputType.emailAddress,
+                            keyboardType: TextInputType.text,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
-                                return 'Please enter email';
+                                return 'Please enter Technician ID or Email';
                               }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
-                                return 'Please enter a valid email';
+                              final text = value.trim();
+                              if (text.length < 3) {
+                                return 'Please enter a valid ID (e.g. TECH-0001) or email';
                               }
                               return null;
                             },
                             decoration: InputDecoration(
-                              hintText: 'name@example.com',
+                              hintText: 'e.g. TECH-0001 or example@gmail.com',
                               hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-                              prefixIcon: const Icon(Icons.email_outlined, size: 20, color: Colors.grey),
+                              prefixIcon: const Icon(Icons.badge_outlined, size: 20, color: Colors.grey),
                               filled: true,
                               fillColor: isDark ? AppTheme.darkBlueBg.withValues(alpha: 0.5) : Colors.grey[50],
                               contentPadding: const EdgeInsets.symmetric(vertical: 16),

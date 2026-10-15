@@ -16,6 +16,7 @@ class InvoiceModel {
   final String? caseId;
   final String? warrantyType;
   final String? preparedBy;
+  final String? technicianId;
   final DateTime createdAt;
   
   // New Report Fields
@@ -44,6 +45,7 @@ class InvoiceModel {
     this.caseId,
     this.warrantyType,
     this.preparedBy,
+    this.technicianId,
     required this.createdAt,
     this.mop = 'UPI',
     this.zipCode = '400001',
@@ -72,6 +74,7 @@ class InvoiceModel {
       caseId: json['caseId'],
       warrantyType: json['warrantyType'],
       preparedBy: json['preparedBy'],
+      technicianId: json['technicianId'] ?? json['technician_id'],
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
       mop: json['mop'] ?? 'UPI',
       zipCode: json['zipCode'] ?? '400001',

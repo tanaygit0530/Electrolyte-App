@@ -373,8 +373,22 @@ const getPriceHistory = async (req, res) => {
 // Get all users
 const getUsers = async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, email, role, created_at FROM users ORDER BY created_at DESC');
-    res.json(result.rows);
+    const result = await pool.query(
+      `SELECT id, name, technician_id, email, role, phone, is_active, created_at 
+       FROM users 
+       ORDER BY created_at DESC`
+    );
+    const users = result.rows.map(u => ({
+      id: u.id,
+      name: u.name || 'Technician',
+      technicianId: u.technician_id,
+      email: u.email,
+      role: u.role,
+      phone: u.phone,
+      isActive: u.is_active,
+      createdAt: u.created_at
+    }));
+    res.json(users);
   } catch (error) {
     console.error('Get Users Error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -383,10 +397,18 @@ const getUsers = async (req, res) => {
 
 // Create a new user (technician or admin)
 const createUser = async (req, res) => {
-  const { email, password, role } = req.body;
+  const { name, email, password, role = 'technician', phone, isActive = true } = req.body;
 
-  if (!email || !password || !role) {
-    return res.status(400).json({ error: 'Email, password, and role are required' });
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Technician name is required' });
+  }
+
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'Technician email is required' });
+  }
+
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
   }
 
   if (role !== 'admin' && role !== 'technician') {
@@ -395,30 +417,47 @@ const createUser = async (req, res) => {
 
   let client;
   try {
-    const lowerEmail = email.toLowerCase().trim();
-    
-    // Check if user already exists
-    const checkUser = await pool.query('SELECT * FROM users WHERE email = $1', [lowerEmail]);
-    if (checkUser.rows.length > 0) {
-      return res.status(400).json({ error: 'A user with this email already exists' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
     client = await pool.connect();
     await client.query('BEGIN');
 
+    const lowerEmail = email && email.trim() ? email.toLowerCase().trim() : null;
+
+    // Check if email already exists if provided
+    if (lowerEmail) {
+      const checkUser = await client.query('SELECT * FROM users WHERE LOWER(email) = $1', [lowerEmail]);
+      if (checkUser.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'A user with this email already exists' });
+      }
+    }
+
+    // Auto-generate Technician ID or Admin ID
+    let techId;
+    if (role === 'technician') {
+      const seqRes = await client.query("SELECT nextval('technician_id_seq')");
+      techId = `TECH-${String(seqRes.rows[0].nextval).padStart(4, '0')}`;
+    } else {
+      const countRes = await client.query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
+      const nextAdminNum = parseInt(countRes.rows[0].count || 0) + 1;
+      techId = `ADMIN-${String(nextAdminNum).padStart(4, '0')}`;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const adminId = (req.admin && req.admin.id) ? req.admin.id : null;
+
     // Insert into users table
     const userInsert = await client.query(
-      'INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role, created_at',
-      [lowerEmail, passwordHash, role]
+      `INSERT INTO users (name, technician_id, email, password_hash, role, phone, is_active, created_by) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING id, name, technician_id, email, role, phone, is_active, created_at`,
+      [name.trim(), techId, lowerEmail, passwordHash, role, phone ? phone.trim() : null, Boolean(isActive), adminId]
     );
     const newUser = userInsert.rows[0];
 
-    // If role is admin, also insert into admins table
-    if (role === 'admin') {
+    // If role is admin and email is present, also insert into admins table
+    if (role === 'admin' && lowerEmail) {
       await client.query(
-        'INSERT INTO admins (email, password_hash) VALUES ($1, $2)',
+        'INSERT INTO admins (email, password_hash) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING',
         [lowerEmail, passwordHash]
       );
     }
@@ -426,8 +465,17 @@ const createUser = async (req, res) => {
     await client.query('COMMIT');
 
     res.status(201).json({
-      message: 'User created successfully',
-      user: newUser
+      message: 'Technician credentials created successfully',
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        technicianId: newUser.technician_id,
+        email: newUser.email,
+        role: newUser.role,
+        phone: newUser.phone,
+        isActive: newUser.is_active,
+        createdAt: newUser.created_at
+      }
     });
 
   } catch (error) {
@@ -444,6 +492,62 @@ const createUser = async (req, res) => {
     if (client) {
       client.release();
     }
+  }
+};
+
+// Toggle or update technician active / allowed status
+const updateUserStatus = async (req, res) => {
+  const { id } = req.params;
+  const { isActive } = req.body;
+
+  if (isActive === undefined || isActive === null) {
+    return res.status(400).json({ error: 'isActive boolean flag is required' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users 
+       SET is_active = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 
+       RETURNING id, name, technician_id, email, role, is_active`,
+      [Boolean(isActive), id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: `User ${result.rows[0].is_active ? 'allowed/activated' : 'disabled'} successfully`,
+      user: {
+        id: result.rows[0].id,
+        name: result.rows[0].name,
+        technicianId: result.rows[0].technician_id,
+        email: result.rows[0].email,
+        role: result.rows[0].role,
+        isActive: result.rows[0].is_active
+      }
+    });
+  } catch (error) {
+    console.error('Update User Status Error:', error);
+    res.status(500).json({ error: 'Internal Server Error updating user status' });
+  }
+};
+
+// Preview next auto-assigned Technician ID
+const getNextTechnicianId = async (req, res) => {
+  try {
+    const seqCheck = await pool.query("SELECT last_value, is_called FROM technician_id_seq");
+    let nextVal = 1;
+    if (seqCheck.rows.length > 0) {
+      const { last_value, is_called } = seqCheck.rows[0];
+      nextVal = is_called ? parseInt(last_value) + 1 : parseInt(last_value);
+    }
+    const nextId = `TECH-${String(nextVal).padStart(4, '0')}`;
+    res.json({ nextId });
+  } catch (error) {
+    console.error('Error fetching next technician ID:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
@@ -764,6 +868,8 @@ module.exports = {
   getPriceHistory,
   getUsers,
   createUser,
+  updateUserStatus,
+  getNextTechnicianId,
   getTechnicianRevenueReport,
   getTechnicianSummaryReport,
   exportExcelReport
