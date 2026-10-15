@@ -3,16 +3,18 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = (process.env.DATABASE_URL || '').trim();
 
 if (!connectionString) {
   console.warn('WARNING: DATABASE_URL environment variable is not defined in .env. NeonDB connection will fail.');
 }
 
+const isLocalhost = connectionString && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'));
+
 const pool = new Pool({
   connectionString: connectionString,
-  ssl: {
-    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? false : true
+  ssl: isLocalhost ? false : {
+    rejectUnauthorized: false // Cloud PostgreSQL requires SSL connection
   }
 });
 

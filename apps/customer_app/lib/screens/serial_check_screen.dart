@@ -11,7 +11,8 @@ class SerialCheckScreen extends StatefulWidget {
   State<SerialCheckScreen> createState() => _SerialCheckScreenState();
 }
 
-class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTickerProviderStateMixin {
+class _SerialCheckScreenState extends State<SerialCheckScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _textController = TextEditingController();
   final MobileScannerController _scannerController = MobileScannerController(
@@ -108,8 +109,14 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 indicatorWeight: 3,
                 tabs: const [
                   Tab(icon: Icon(Icons.camera_alt_outlined), text: 'Live Scan'),
-                  Tab(icon: Icon(Icons.photo_library_outlined), text: 'Upload Image'),
-                  Tab(icon: Icon(Icons.edit_note_outlined), text: 'Manual Entry'),
+                  Tab(
+                    icon: Icon(Icons.photo_library_outlined),
+                    text: 'Upload Image',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.edit_note_outlined),
+                    text: 'Manual Entry',
+                  ),
                 ],
               ),
       ),
@@ -133,7 +140,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(color: AppTheme.primaryYellow),
+                          CircularProgressIndicator(
+                            color: AppTheme.primaryYellow,
+                          ),
                           SizedBox(height: 16),
                           Text(
                             'Verifying Serial in Database...',
@@ -153,7 +162,11 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
   }
 
   // --- TAB 1: Live Camera Scanner ---
-  Widget _buildCameraScannerTab(BuildContext context, SerialCheckProvider provider, bool isDark) {
+  Widget _buildCameraScannerTab(
+    BuildContext context,
+    SerialCheckProvider provider,
+    bool isDark,
+  ) {
     return Stack(
       children: [
         MobileScanner(
@@ -179,12 +192,20 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
             ),
             child: const Row(
               children: [
-                Icon(Icons.info_outline, color: AppTheme.primaryYellow, size: 20),
+                Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryYellow,
+                  size: 20,
+                ),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Point camera at the QR code or Barcode sticker on the product',
-                    style: TextStyle(color: Colors.white, fontSize: 13, height: 1.3),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
                   ),
                 ),
               ],
@@ -222,7 +243,11 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
   }
 
   // --- TAB 2: Upload Image from Gallery ---
-  Widget _buildUploadImageTab(BuildContext context, SerialCheckProvider provider, bool isDark) {
+  Widget _buildUploadImageTab(
+    BuildContext context,
+    SerialCheckProvider provider,
+    bool isDark,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -234,7 +259,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
               color: isDark ? AppTheme.darkCardColor : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.grey.shade300,
               ),
             ),
             child: Column(
@@ -242,7 +269,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 Icon(
                   Icons.cloud_upload_outlined,
                   size: 64,
-                  color: isDark ? AppTheme.primaryYellow : Colors.amber.shade800,
+                  color: isDark
+                      ? AppTheme.primaryYellow
+                      : Colors.amber.shade800,
                 ),
                 const SizedBox(height: 14),
                 const Text(
@@ -260,12 +289,18 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
-                  onPressed: () => provider.pickAndScanImage(_scannerController),
+                  onPressed: () =>
+                      provider.pickAndScanImage(_scannerController),
                   icon: const Icon(Icons.photo_library),
                   label: const Text('Select from Gallery'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ],
@@ -301,7 +336,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                   Expanded(
                     child: Text(
                       provider.errorMessage!,
-                      style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -314,7 +352,11 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
   }
 
   // --- TAB 3: Manual Text Entry ---
-  Widget _buildManualEntryTab(BuildContext context, SerialCheckProvider provider, bool isDark) {
+  Widget _buildManualEntryTab(
+    BuildContext context,
+    SerialCheckProvider provider,
+    bool isDark,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -326,7 +368,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
               color: isDark ? AppTheme.darkCardColor : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.grey.shade300,
               ),
             ),
             child: Column(
@@ -338,7 +382,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     SizedBox(width: 10),
                     Text(
                       'Enter Serial Number',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -364,7 +411,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     hintText: 'e.g. LA24AECHA2P13535',
                     hintStyle: TextStyle(
                       fontFamily: 'monospace',
-                      color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                      color: isDark
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade400,
                     ),
                     filled: true,
                     fillColor: isDark ? AppTheme.darkBlueBg : Colors.white,
@@ -380,15 +429,22 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                         : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryYellow, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryYellow,
+                        width: 2,
+                      ),
                     ),
                   ),
                   onChanged: (val) {
@@ -407,11 +463,14 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                   child: ElevatedButton.icon(
                     onPressed: _textController.text.trim().isEmpty
                         ? null
-                        : () => provider.checkSerial(_textController.text.trim()),
+                        : () =>
+                              provider.checkSerial(_textController.text.trim()),
                     icon: const Icon(Icons.search),
                     label: const Text('Check 60-Day Status'),
                     style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -434,7 +493,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                   Expanded(
                     child: Text(
                       provider.errorMessage!,
-                      style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -447,10 +509,16 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
   }
 
   // --- RESULT VIEW: REPEAT RISK (RED) vs SAFE TO CLOSE (GREEN) ---
-  Widget _buildResultView(BuildContext context, SerialCheckProvider provider, bool isDark) {
+  Widget _buildResultView(
+    BuildContext context,
+    SerialCheckProvider provider,
+    bool isDark,
+  ) {
     final result = provider.result!;
     final isRepeatRisk = result.isWithin60Days;
-    final primaryColor = isRepeatRisk ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    final primaryColor = isRepeatRisk
+        ? const Color(0xFFEF4444)
+        : const Color(0xFF10B981);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -463,7 +531,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkCardColor : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: primaryColor.withValues(alpha: 0.6), width: 2),
+              border: Border.all(
+                color: primaryColor.withValues(alpha: 0.6),
+                width: 2,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: primaryColor.withValues(alpha: 0.16),
@@ -482,7 +553,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isRepeatRisk ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+                    isRepeatRisk
+                        ? Icons.warning_amber_rounded
+                        : Icons.check_circle_rounded,
                     color: primaryColor,
                     size: 58,
                   ),
@@ -491,18 +564,23 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
 
                 // Status Text Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: primaryColor,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(
-                    isRepeatRisk ? 'REPEAT RISK' : 'SAFE TO CLOSE',
+                    isRepeatRisk
+                        ? 'REPEAT RISK (< 60 DAYS)'
+                        : 'SAFE TO CLOSE (> 60 DAYS)',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 19,
+                      fontSize: 17,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ),
@@ -518,7 +596,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                       'Serial No: ',
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                       ),
                     ),
                     SelectableText(
@@ -546,7 +626,9 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 color: isDark ? AppTheme.darkCardColor : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.grey.shade200,
                 ),
               ),
               child: Column(
@@ -557,15 +639,54 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 14),
-                  _buildDetailRow('Product', result.record?['productName'] ?? 'N/A', isDark),
-                  _buildDetailRow('Product Code', result.record?['productCode'] ?? 'N/A', isDark),
-                  _buildDetailRow('Case Number', result.record?['caseNumber'] ?? 'N/A', isDark),
-                  _buildDetailRow('End Date', result.record?['endDate'] ?? result.record?['serviceDate'] ?? 'N/A', isDark),
-                  _buildDetailRow('Customer', result.record?['customerName'] ?? 'N/A', isDark),
-                  _buildDetailRow('Location', '${result.record?['city'] ?? ''} ${result.record?['state'] ?? ''}'.trim(), isDark),
-                  _buildDetailRow('Complaint', result.record?['complaint'] ?? 'None recorded', isDark),
-                  _buildDetailRow('Repair / Action', result.record?['repair'] ?? 'None recorded', isDark),
-                  _buildDetailRow('Status', result.record?['status'] ?? 'N/A', isDark),
+                  _buildDetailRow(
+                    'Product',
+                    result.record?['productName'] ?? 'N/A',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Product Code',
+                    result.record?['productCode'] ?? 'N/A',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Case Number',
+                    result.record?['caseNumber'] ?? 'N/A',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'End Date',
+                    result.record?['endDate'] ??
+                        result.record?['serviceDate'] ??
+                        'N/A',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Customer',
+                    result.record?['customerName'] ?? 'N/A',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Location',
+                    '${result.record?['city'] ?? ''} ${result.record?['state'] ?? ''}'
+                        .trim(),
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Complaint',
+                    result.record?['complaint'] ?? 'None recorded',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Repair / Action',
+                    result.record?['repair'] ?? 'None recorded',
+                    isDark,
+                  ),
+                  _buildDetailRow(
+                    'Status',
+                    result.record?['status'] ?? 'N/A',
+                    isDark,
+                  ),
                 ],
               ),
             ),
@@ -581,9 +702,14 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
                 _textController.clear();
               },
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Verify Another Serial Number', style: TextStyle(fontSize: 15)),
+              label: const Text(
+                'Verify Another Serial Number',
+                style: TextStyle(fontSize: 15),
+              ),
               style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ),
@@ -615,10 +741,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen> with SingleTicker
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -640,7 +763,8 @@ class _ScannerOverlayPainter extends CustomPainter {
     );
 
     // Dim background
-    final backgroundPaint = Paint()..color = Colors.black.withValues(alpha: 0.65);
+    final backgroundPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.65);
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(RRect.fromRectAndRadius(scanRect, const Radius.circular(16)))
@@ -658,20 +782,52 @@ class _ScannerOverlayPainter extends CustomPainter {
     const cornerLength = 26.0;
 
     // Top-left
-    canvas.drawLine(scanRect.topLeft, scanRect.topLeft + const Offset(cornerLength, 0), cornerPaint);
-    canvas.drawLine(scanRect.topLeft, scanRect.topLeft + const Offset(0, cornerLength), cornerPaint);
+    canvas.drawLine(
+      scanRect.topLeft,
+      scanRect.topLeft + const Offset(cornerLength, 0),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      scanRect.topLeft,
+      scanRect.topLeft + const Offset(0, cornerLength),
+      cornerPaint,
+    );
 
     // Top-right
-    canvas.drawLine(scanRect.topRight, scanRect.topRight + const Offset(-cornerLength, 0), cornerPaint);
-    canvas.drawLine(scanRect.topRight, scanRect.topRight + const Offset(0, cornerLength), cornerPaint);
+    canvas.drawLine(
+      scanRect.topRight,
+      scanRect.topRight + const Offset(-cornerLength, 0),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      scanRect.topRight,
+      scanRect.topRight + const Offset(0, cornerLength),
+      cornerPaint,
+    );
 
     // Bottom-left
-    canvas.drawLine(scanRect.bottomLeft, scanRect.bottomLeft + const Offset(cornerLength, 0), cornerPaint);
-    canvas.drawLine(scanRect.bottomLeft, scanRect.bottomLeft + const Offset(0, -cornerLength), cornerPaint);
+    canvas.drawLine(
+      scanRect.bottomLeft,
+      scanRect.bottomLeft + const Offset(cornerLength, 0),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      scanRect.bottomLeft,
+      scanRect.bottomLeft + const Offset(0, -cornerLength),
+      cornerPaint,
+    );
 
     // Bottom-right
-    canvas.drawLine(scanRect.bottomRight, scanRect.bottomRight + const Offset(-cornerLength, 0), cornerPaint);
-    canvas.drawLine(scanRect.bottomRight, scanRect.bottomRight + const Offset(0, -cornerLength), cornerPaint);
+    canvas.drawLine(
+      scanRect.bottomRight,
+      scanRect.bottomRight + const Offset(-cornerLength, 0),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      scanRect.bottomRight,
+      scanRect.bottomRight + const Offset(0, -cornerLength),
+      cornerPaint,
+    );
   }
 
   @override

@@ -66,8 +66,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // Rate Limiters
 const authLimiter = rateLimit({
@@ -116,6 +116,12 @@ app.use((err, req, res, next) => {
     console.warn(`[CORS Blocked] ${err.message}`);
     return res.status(err.status || 403).json({
       error: err.message
+    });
+  }
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      error: 'The uploaded file exceeds the 200MB limit. Please upload a smaller file.'
     });
   }
   console.error('Unhandled Backend Error:', err);
@@ -226,6 +232,8 @@ const setupDatabaseTriggerAndListener = async () => {
     console.log('PostgreSQL trigger functions set up successfully');
 
     // 2. Set up a dedicated client to LISTEN to the channel
+    const dbUrl = (process.env.DATABASE_URL || '').trim();
+    const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
     const listenClient = new Client({
       connectionString: DATABASE_URL,
       ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? false : true }
@@ -247,14 +255,15 @@ const setupDatabaseTriggerAndListener = async () => {
     });
 
     listenClient.on('error', (err) => {
-      console.error('Dedicated LISTEN client connection error:', err);
-      // Attempt reconnect after 5 seconds
-      setTimeout(setupDatabaseTriggerAndListener, 5000);
+      console.error('Dedicated LISTEN client connection error:', err.message || err);
+      // Attempt reconnect after 15 seconds
+      setTimeout(setupDatabaseTriggerAndListener, 15000);
     });
 
   } catch (err) {
-    console.error('Failed to set up PostgreSQL database trigger or listener:', err);
-    setTimeout(setupDatabaseTriggerAndListener, 5000);
+    console.error('Failed to set up PostgreSQL database trigger or listener:', err.message || err);
+    console.warn('Backend server remains operational. Will retry database listener setup in 15 seconds...');
+    setTimeout(setupDatabaseTriggerAndListener, 15000);
   }
 };
 

@@ -1,0 +1,53 @@
+name: Build Admin Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    name: Build Windows Desktop App
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Get Shared Core Dependencies
+        working-directory: packages/shared_core
+        run: flutter pub get
+
+      - name: Get Shared UI Dependencies
+        working-directory: packages/shared_ui
+        run: flutter pub get
+
+      - name: Get Admin App Dependencies
+        working-directory: apps/admin_app
+        run: flutter pub get
+
+      - name: Build Windows Release Executable
+        working-directory: apps/admin_app
+        run: flutter build windows --release --dart-define=API_URL=https://electrolyte-app-backend.onrender.com
+
+      - name: Package Release as ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "apps/admin_app/build/windows/x64/runner/Release/*" -DestinationPath "Electrolyte-Admin-Windows.zip" -Force
+
+      - name: Upload Windows Zipped Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Electrolyte-Admin-Windows-App
+          path: Electrolyte-Admin-Windows.zip
+          if-no-files-found: error

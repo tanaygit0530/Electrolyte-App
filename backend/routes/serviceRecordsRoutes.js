@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit to comfortably handle Data.xlsx
+  limits: { fileSize: 200 * 1024 * 1024 } // 200MB limit to handle large CSV/Excel files (e.g. 50MB+ datasets)
 });
 
 const { requireTechnicianAuth } = require('../middleware/auth');
