@@ -160,7 +160,21 @@ const setup = async () => {
       ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
     await pool.query(`
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    `);
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'invoices_user_id_fkey'
+        ) THEN
+          ALTER TABLE invoices DROP CONSTRAINT invoices_user_id_fkey;
+          ALTER TABLE invoices ADD CONSTRAINT invoices_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN NULL;
+      END $$;
     `);
     await pool.query(`
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS technician_id VARCHAR(50);

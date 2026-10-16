@@ -47,6 +47,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return 'Technician Revenue Reports';
       case 7:
         return 'Service Records & 60-Day Audit';
+      case 8:
+        return 'Technician & User Management';
       default:
         return 'Admin Control Panel';
     }
@@ -85,6 +87,9 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       case 7:
         Provider.of<ServiceRecordsProvider>(context, listen: false).reset();
         break;
+      case 8:
+        Provider.of<UserProvider>(context, listen: false).fetchUsers();
+        break;
     }
   }
 
@@ -106,6 +111,8 @@ class _MainWorkspaceState extends State<MainWorkspace> {
         return Provider.of<ReportProvider>(context).isLoading;
       case 7:
         return Provider.of<ServiceRecordsProvider>(context).isUploading;
+      case 8:
+        return Provider.of<UserProvider>(context).isLoading || Provider.of<UserProvider>(context).isDeleting;
       default:
         return false;
     }
@@ -162,6 +169,7 @@ class _MainWorkspaceState extends State<MainWorkspace> {
       const AdminBillingScreen(),
       const TechnicianRevenueReportScreen(),
       const ServiceDataUploadScreen(),
+      const UserManagementScreen(),
     ];
 
     final bool isLoading = _isPageLoading(context);

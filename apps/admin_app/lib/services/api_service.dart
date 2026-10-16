@@ -230,12 +230,30 @@ class ApiService {
     }
   }
 
-  /// Create a new user
-  Future<Map<String, dynamic>> createUser(String email, String password, String role) async {
+  /// Create a new user / technician
+  Future<Map<String, dynamic>> createUser(
+    String email,
+    String password,
+    String role, {
+    String? name,
+    String? phone,
+  }) async {
     try {
+      final payload = <String, dynamic>{
+        'email': email.trim(),
+        'password': password,
+        'role': role,
+      };
+      if (name != null && name.trim().isNotEmpty) {
+        payload['name'] = name.trim();
+      }
+      if (phone != null && phone.trim().isNotEmpty) {
+        payload['phone'] = phone.trim();
+      }
+
       final response = await _dio.post(
         '$baseUrl/api/admin/users',
-        data: {'email': email, 'password': password, 'role': role},
+        data: payload,
       );
       return _parseMapResponse(response.data);
     } on DioException catch (e) {
@@ -243,6 +261,31 @@ class ApiService {
       final parsed = data != null ? _parseMapResponse(data) : {};
       final msg = parsed['error'] ?? 'Failed to create user';
       throw Exception(msg);
+    }
+  }
+
+  /// Delete a technician / user account by numeric ID or Technician ID
+  Future<Map<String, dynamic>> deleteUser(dynamic idOrTechId) async {
+    try {
+      final cleanId = Uri.encodeComponent(idOrTechId.toString().trim());
+      final response = await _dio.delete('$baseUrl/api/admin/users/$cleanId');
+      return _parseMapResponse(response.data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final parsed = data != null ? _parseMapResponse(data) : {};
+      final msg = parsed['error'] ?? 'Failed to delete technician account';
+      throw Exception(msg);
+    }
+  }
+
+  /// Preview next auto-assigned Technician ID
+  Future<String> getNextTechnicianId() async {
+    try {
+      final response = await _dio.get('$baseUrl/api/admin/next-technician-id');
+      final data = _parseMapResponse(response.data);
+      return data['nextId']?.toString() ?? 'TECH-0001';
+    } catch (_) {
+      return 'TECH-0001';
     }
   }
 

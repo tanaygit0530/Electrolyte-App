@@ -399,13 +399,12 @@ const getUsers = async (req, res) => {
 const createUser = async (req, res) => {
   const { name, email, password, role = 'technician', phone, isActive = true } = req.body;
 
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Technician name is required' });
-  }
-
   if (!email || !email.trim()) {
     return res.status(400).json({ error: 'Technician email is required' });
   }
+
+  const trimmedEmail = email.trim();
+  const resolvedName = (name && name.trim()) ? name.trim() : (trimmedEmail ? trimmedEmail.split('@')[0] : 'Technician');
 
   if (!password || password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -450,7 +449,7 @@ const createUser = async (req, res) => {
       `INSERT INTO users (name, technician_id, email, password_hash, role, phone, is_active, created_by) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING id, name, technician_id, email, role, phone, is_active, created_at`,
-      [name.trim(), techId, lowerEmail, passwordHash, role, phone ? phone.trim() : null, Boolean(isActive), adminId]
+      [resolvedName, techId, lowerEmail, passwordHash, role, phone ? phone.trim() : null, Boolean(isActive), adminId]
     );
     const newUser = userInsert.rows[0];
 
@@ -531,6 +530,93 @@ const updateUserStatus = async (req, res) => {
   } catch (error) {
     console.error('Update User Status Error:', error);
     res.status(500).json({ error: 'Internal Server Error updating user status' });
+  }
+};
+
+// Delete a technician / user account permanently by ID or Technician ID
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: 'User ID or Technician ID is required' });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // 1. Find user by numeric id or technician_id or email
+    const trimmedId = String(id).trim();
+    const isNumeric = /^\d+$/.test(trimmedId);
+    let findQuery;
+    let findParams;
+
+    if (isNumeric) {
+      findQuery = 'SELECT * FROM users WHERE id = $1';
+      findParams = [parseInt(trimmedId, 10)];
+    } else {
+      findQuery = 'SELECT * FROM users WHERE UPPER(technician_id) = UPPER($1) OR LOWER(email) = LOWER($1)';
+      findParams = [trimmedId];
+    }
+
+    const userRes = await client.query(findQuery, findParams);
+    if (userRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: `Technician account '${trimmedId}' not found` });
+    }
+
+    const targetUser = userRes.rows[0];
+
+    // Safety: Prevent deleting the currently authenticated admin account
+    if (req.admin && (req.admin.id === targetUser.id || (req.admin.email && targetUser.email && req.admin.email.toLowerCase() === targetUser.email.toLowerCase()))) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'You cannot delete your own logged-in administrator account' });
+    }
+
+    // 2. Unlink invoices so financial history and revenue records remain intact for audit
+    await client.query('UPDATE invoices SET user_id = NULL WHERE user_id = $1', [targetUser.id]);
+
+    // 3. Unlink any users created_by this user
+    await client.query('UPDATE users SET created_by = NULL WHERE created_by = $1', [targetUser.id]);
+
+    // 4. Clean up any chat sessions belonging to this user
+    await client.query('DELETE FROM chat_sessions WHERE user_id = $1', [targetUser.id]);
+
+    // 5. If this was also an admin account in the admins table, remove from admins table
+    if (targetUser.email) {
+      await client.query('DELETE FROM admins WHERE LOWER(email) = LOWER($1)', [targetUser.email]);
+    }
+
+    // 6. Delete user account from users table
+    await client.query('DELETE FROM users WHERE id = $1', [targetUser.id]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: `Technician account ${targetUser.technician_id ? `(${targetUser.technician_id})` : ''} deleted successfully`,
+      deletedUser: {
+        id: targetUser.id,
+        technicianId: targetUser.technician_id,
+        name: targetUser.name,
+        email: targetUser.email,
+        role: targetUser.role
+      }
+    });
+  } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Error rolling back user deletion:', rollbackError);
+      }
+    }
+    console.error('Delete User Error:', error);
+    res.status(500).json({ error: 'Internal Server Error deleting technician account' });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 };
 
@@ -869,6 +955,7 @@ module.exports = {
   getUsers,
   createUser,
   updateUserStatus,
+  deleteUser,
   getNextTechnicianId,
   getTechnicianRevenueReport,
   getTechnicianSummaryReport,
