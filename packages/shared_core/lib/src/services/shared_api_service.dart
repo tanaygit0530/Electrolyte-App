@@ -79,6 +79,15 @@ class SharedApiService {
     return response;
   }
 
+  Future<http.Response> _delete(String url, {Map<String, String>? headers}) async {
+    final mergedHeaders = await _getHeaders(extraHeaders: headers);
+    final response = await _client.delete(Uri.parse(url), headers: mergedHeaders).timeout(_timeout);
+    if (response.statusCode == 401) {
+      onSessionExpired?.call();
+    }
+    return response;
+  }
+
   /// Secure Customer (Technician / Admin) Login
   Future<Map<String, dynamic>> login(String identifier, String password) async {
     final response = await _client.post(
@@ -288,6 +297,28 @@ class SharedApiService {
       }
     } catch (_) {}
     return 'TECH-0001';
+  }
+
+  /// Delete technician / user account by numeric ID or Technician ID (Admin only)
+  Future<Map<String, dynamic>> deleteTechnician(dynamic idOrTechId) async {
+    final cleanId = Uri.encodeComponent(idOrTechId.toString().trim());
+    final response = await _delete('$baseUrl/api/admin/users/$cleanId');
+    Map<String, dynamic> body = {};
+    try {
+      if (response.body.isNotEmpty) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          body = decoded;
+        }
+      }
+    } catch (_) {}
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body;
+    } else {
+      final msg = body['error'] ?? 'Server error (${response.statusCode}): ${response.reasonPhrase ?? response.body}';
+      throw Exception(msg);
+    }
   }
 }
 

@@ -110,6 +110,11 @@ app.get('/', (req, res) => {
   res.send('<h1>Electrolyte App Backend is running successfully!</h1>');
 });
 
+// 404 JSON Fallback Handler for unmatched routes
+app.use((req, res) => {
+  res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
 // Global JSON Error Handler
 app.use((err, req, res, next) => {
   if (err.message && err.message.startsWith('Blocked by CORS policy')) {

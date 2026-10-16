@@ -15,6 +15,7 @@ router.get('/price-history', adminAuth, adminController.getPriceHistory);
 router.get('/users', adminAuth, adminController.getUsers);
 router.post('/users', adminAuth, adminController.createUser);
 router.patch('/users/:id/status', adminAuth, adminController.updateUserStatus);
+router.delete('/users/:id', adminAuth, adminController.deleteUser);
 router.get('/next-technician-id', adminAuth, adminController.getNextTechnicianId);
 
 // Reports routes

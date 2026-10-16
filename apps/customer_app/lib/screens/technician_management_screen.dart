@@ -85,6 +85,87 @@ class _TechnicianManagementScreenState extends State<TechnicianManagementScreen>
     }
   }
 
+  Future<void> _confirmDeleteTechnician(Map<String, dynamic> user) async {
+    final techId = user['technicianId'] ?? user['technician_id'] ?? '';
+    final name = user['name'] ?? 'Technician';
+    final userId = user['id'];
+    final displayId = techId.toString().isNotEmpty ? techId.toString() : 'User #$userId';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_forever, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to delete Technician ID $displayId ($name)?',
+                style: const TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Deleting this technician ID will permanently delete the entire account and revoke login access.\n\n*Historical invoices created by this technician will remain preserved for auditing.*',
+                style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text('Delete Account', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      try {
+        final apiService = context.read<SharedApiService>();
+        final idToDelete = techId.toString().isNotEmpty ? techId : userId;
+        await apiService.deleteTechnician(idToDelete);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Technician account ($displayId) deleted permanently.'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        _fetchTechnicians();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete account: $e'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _openCreateTechnicianDialog() async {
     final apiService = context.read<SharedApiService>();
     String nextId = 'TECH-0001';
@@ -474,11 +555,22 @@ Login Portal: Electrolyte App''';
                                               ]
                                             ],
                                           ),
-                                          // Allow / Disable switch
-                                          Switch(
-                                            value: isActive,
-                                            activeThumbColor: AppTheme.primaryYellow,
-                                            onChanged: (val) => _toggleUserStatus(id, isActive),
+                                          Row(
+                                            children: [
+                                              if (role != 'admin')
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                                  tooltip: 'Delete Technician Account',
+                                                  onPressed: () => _confirmDeleteTechnician(user),
+                                                ),
+                                              const SizedBox(width: 4),
+                                              // Allow / Disable switch
+                                              Switch(
+                                                value: isActive,
+                                                activeThumbColor: AppTheme.primaryYellow,
+                                                onChanged: (val) => _toggleUserStatus(id, isActive),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
