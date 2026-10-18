@@ -19,7 +19,10 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          String? token = await _secureStorage.read(key: 'admin_token');
+          String? token;
+          try {
+            token = await _secureStorage.read(key: 'admin_token');
+          } catch (_) {}
           if (token == null || token.isEmpty) {
             final prefs = await SharedPreferences.getInstance();
             token = prefs.getString('admin_token');
