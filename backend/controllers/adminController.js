@@ -8,6 +8,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { JWT_SECRET } = require('../config/env');
 const { invalidateVocabulary } = require('../services/vocabularyService');
+const { escapeLikePattern } = require('../utils/sqlUtils');
 
 // JWT Admin Login
 const login = async (req, res) => {
@@ -34,7 +35,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: 'admin' },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '12h' }
     );
 
     res.json({
@@ -698,14 +699,14 @@ const getFilteredInvoicesQuery = (queryParams) => {
   // 4. Customer Search
   if (customerSearch) {
     conditions.push(`customer_name ILIKE $${paramIdx}`);
-    params.push(`%${customerSearch}%`);
+    params.push(`%${escapeLikePattern(customerSearch)}%`);
     paramIdx++;
   }
   
   // 5. Invoice Search
   if (invoiceSearch) {
     conditions.push(`invoice_number ILIKE $${paramIdx}`);
-    params.push(`%${invoiceSearch}%`);
+    params.push(`%${escapeLikePattern(invoiceSearch)}%`);
     paramIdx++;
   }
   

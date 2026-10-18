@@ -37,6 +37,7 @@ dependencies:
   dio: ^5.4.3
   provider: ^6.1.2
   shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.4
   file_picker: ^8.0.3
   excel: ^4.0.3
   http: ^1.2.1

@@ -40,8 +40,8 @@ const isAllowedOrigin = (origin) => {
   // Allow explicitly listed origins
   if (ALLOWED_ORIGINS.includes(origin)) return true;
 
-  // Allow any localhost or 127.0.0.1 port (for Flutter Web, Vite, React, etc.)
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+  // Allow any localhost or 127.0.0.1 port in development only
+  if (NODE_ENV === 'development' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
     return true;
   }
 

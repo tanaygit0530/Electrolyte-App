@@ -2,6 +2,7 @@ const { pool } = require('../config/neondb');
 const { generatePDF } = require('../services/pdfService');
 const { uploadToCloudinary } = require('../services/cloudinaryService');
 const { sendEmail } = require('../services/emailService');
+const { escapeLikePattern } = require('../utils/sqlUtils');
 
 const formatInvoice = (inv) => ({
   id: String(inv.id),
@@ -209,7 +210,7 @@ const getInvoices = async (req, res) => {
     }
 
     if (search) {
-      params.push(`%${search}%`);
+      params.push(`%${escapeLikePattern(search)}%`);
       conditions.push(`(customer_name ILIKE $${params.length} OR invoice_number ILIKE $${params.length} OR prepared_by ILIKE $${params.length})`);
     }
 
