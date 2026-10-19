@@ -19,11 +19,39 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Please enter an email and password' });
     }
 
-    const adminQuery = await pool.query('SELECT * FROM admins WHERE email = $1', [email.toLowerCase().trim()]);
-    const admin = adminQuery.rows[0];
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Primary lookup: users table with role = 'admin'
+    let admin = null;
+    try {
+      const userRes = await pool.query(
+        "SELECT id, email, password_hash, role, is_active FROM users WHERE LOWER(email) = $1 AND role = 'admin'",
+        [cleanEmail]
+      );
+      admin = userRes.rows[0];
+    } catch (_) {}
+
+    // 2. Backward compatibility fallback: admins table
+    if (!admin) {
+      const legacyQuery = await pool.query('SELECT * FROM admins WHERE LOWER(email) = $1', [cleanEmail]);
+      const legacyAdmin = legacyQuery.rows[0];
+      if (legacyAdmin) {
+        admin = {
+          id: legacyAdmin.id,
+          email: legacyAdmin.email,
+          password_hash: legacyAdmin.password_hash,
+          role: 'admin',
+          is_active: true
+        };
+      }
+    }
 
     if (!admin) {
       return res.status(401).json({ error: 'No admin found with this email' });
+    }
+
+    if (admin.is_active === false) {
+      return res.status(403).json({ error: 'This admin account has been deactivated.' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, admin.password_hash);

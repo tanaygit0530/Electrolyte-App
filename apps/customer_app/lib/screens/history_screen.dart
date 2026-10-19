@@ -108,7 +108,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         if (provider.invoices.isEmpty) {
           return const Center(child: Text("No invoice history found."));
         }
-        return ListView.builder(
+        final list = ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: provider.invoices.length,
           itemBuilder: (context, index) {
@@ -142,6 +142,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
             );
           },
         );
+
+        if (provider.isUsingCache) {
+          final timeStr = provider.lastCacheTime != null
+              ? DateFormat('dd MMM, hh:mm a').format(provider.lastCacheTime!)
+              : 'recently';
+          return Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.amber.shade900.withOpacity(0.2),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_off, size: 16, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Offline Mode: Displaying local cached invoices (saved $timeStr)',
+                        style: const TextStyle(fontSize: 12, color: Colors.amber),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: list),
+            ],
+          );
+        }
+
+        return list;
       },
     );
   }

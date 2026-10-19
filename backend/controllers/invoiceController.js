@@ -127,9 +127,8 @@ const createInvoice = async (req, res) => {
     // Mutate the local object for PDF generation
     savedInvoice.invoice_number = invoiceNumber;
 
-    // Update real invoice number in DB (non-blocking)
-    pool.query('UPDATE invoices SET invoice_number = $1 WHERE id = $2', [invoiceNumber, savedId])
-      .catch(err => console.error('DB Update Error (Invoice Number):', err));
+    // Update real invoice number in DB synchronously to ensure atomic consistency
+    await pool.query('UPDATE invoices SET invoice_number = $1 WHERE id = $2', [invoiceNumber, savedId]);
       
     console.timeEnd('Database Insert & Invoice Number Generation');
 

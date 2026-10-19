@@ -221,9 +221,59 @@ class _MainWorkspaceState extends State<MainWorkspace> {
                           ),
                         ),
                         
-                        // Right: Actions Deck (Refresh, Profile, Avatar, Logout)
+                        // Right: Actions Deck (Status Indicator, Refresh, Profile, Avatar, Logout)
                         Row(
                           children: [
+                            // Real-time WebSocket sync badge
+                            Consumer<DashboardProvider>(
+                              builder: (context, dashboard, _) {
+                                final isConnected = dashboard.isWsConnected;
+                                return Tooltip(
+                                  message: isConnected
+                                      ? 'Real-time WebSocket active'
+                                      : 'Real-time disconnected. Auto-polling active.',
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    margin: const EdgeInsets.only(right: 12),
+                                    decoration: BoxDecoration(
+                                      color: isConnected
+                                          ? const Color(0xFF10B981).withOpacity(0.12)
+                                          : const Color(0xFFF59E0B).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: isConnected
+                                            ? const Color(0xFF10B981).withOpacity(0.3)
+                                            : const Color(0xFFF59E0B).withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: isConnected ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          isConnected ? 'Live' : 'Polling',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: isConnected ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
                             // Refresh/Action button with glow hover
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(

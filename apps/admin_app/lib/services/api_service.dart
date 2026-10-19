@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_core/shared_core.dart';
 import '../models/upload_history.dart';
 
 class ApiService {
@@ -44,11 +45,8 @@ class ApiService {
     );
   }
 
-  static String get baseUrl {
-    const String envUrl = String.fromEnvironment('API_URL');
-    if (envUrl.isNotEmpty) return envUrl;
-    return _defaultUrl;
-  }
+  /// Single source of truth: delegates to SharedApiService.baseUrl
+  static String get baseUrl => SharedApiService.baseUrl;
 
   static String get wsUrl {
     final base = baseUrl;

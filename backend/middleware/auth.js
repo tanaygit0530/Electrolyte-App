@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/env');
+const { pool } = require('../config/neondb');
 
-const requireTechnicianAuth = (req, res, next) => {
+const requireTechnicianAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     if (!authHeader) {
@@ -20,6 +21,16 @@ const requireTechnicianAuth = (req, res, next) => {
     
     if (decoded.role !== 'technician' && decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden: Requires technician or admin role.' });
+    }
+
+    // Server-side session & active status validation
+    try {
+      const activeCheck = await pool.query('SELECT is_active, role FROM users WHERE id = $1', [decoded.id]);
+      if (activeCheck.rows.length > 0 && activeCheck.rows[0].is_active === false) {
+        return res.status(403).json({ error: 'Account has been deactivated. Access revoked.' });
+      }
+    } catch (dbErr) {
+      console.warn('Session DB verification warning:', dbErr.message);
     }
 
     // Attach user info to request
