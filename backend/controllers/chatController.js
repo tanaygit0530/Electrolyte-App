@@ -173,8 +173,24 @@ exports.getSessions = async (req, res) => {
 
 exports.getSessionMessages = async (req, res) => {
   const { sessionId } = req.params;
+  const userId = req.user?.id;
+  const isAdmin = req.user?.role === 'admin';
 
   try {
+    // Verify session exists and belongs to the requesting user (or user is admin)
+    const sessionCheck = await pool.query(
+      'SELECT id, user_id FROM chat_sessions WHERE id = $1',
+      [sessionId]
+    );
+
+    if (sessionCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Chat session not found' });
+    }
+
+    if (!isAdmin && sessionCheck.rows[0].user_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to view this chat session.' });
+    }
+
     const result = await pool.query(
       `
       SELECT *

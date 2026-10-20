@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_core/shared_core.dart';
 import '../models/upload_history.dart';
 
 class ApiService {
   final Dio _dio = Dio();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   static const String _defaultUrl = 'http://localhost:5001';
   
   Function()? onSessionExpired;
@@ -17,8 +20,14 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('admin_token');
+          String? token;
+          try {
+            token = await _secureStorage.read(key: 'admin_token');
+          } catch (_) {}
+          if (token == null || token.isEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            token = prefs.getString('admin_token');
+          }
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -36,11 +45,8 @@ class ApiService {
     );
   }
 
-  static String get baseUrl {
-    const String envUrl = String.fromEnvironment('API_URL');
-    if (envUrl.isNotEmpty) return envUrl;
-    return _defaultUrl;
-  }
+  /// Single source of truth: delegates to SharedApiService.baseUrl
+  static String get baseUrl => SharedApiService.baseUrl;
 
   static String get wsUrl {
     final base = baseUrl;

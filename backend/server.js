@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('./config/neondb');
 const { closeBrowser, getBrowser } = require('./services/pdfService');
 const { invalidateVocabulary } = require('./services/vocabularyService');
+const logger = require('./utils/logger');
 
 const chatRoutes = require('./routes/chatRoutes');
 const partsRoutes = require('./routes/parts');
@@ -40,8 +41,8 @@ const isAllowedOrigin = (origin) => {
   // Allow explicitly listed origins
   if (ALLOWED_ORIGINS.includes(origin)) return true;
 
-  // Allow any localhost or 127.0.0.1 port (for Flutter Web, Vite, React, etc.)
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+  // Allow any localhost or 127.0.0.1 port in development only
+  if (NODE_ENV === 'development' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
     return true;
   }
 
@@ -66,8 +67,21 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: '200mb' }));
-app.use(express.urlencoded({ limit: '200mb', extended: true }));
+app.use(express.json({ limit: '1024mb' }));
+app.use(express.urlencoded({ limit: '1024mb', extended: true }));
+
+// Global Request Observability & API Versioning Middleware
+app.use((req, res, next) => {
+  res.setHeader('X-API-Version', '1.0.0');
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (req.path !== '/health' && req.path !== '/readiness') {
+      logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+    }
+  });
+  next();
+});
 
 // Rate Limiters
 const authLimiter = rateLimit({
@@ -87,23 +101,98 @@ const apiLimiter = rateLimit({
 });
 
 app.use('/auth/login', authLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/v1/auth/login', authLimiter);
 app.use('/chat', apiLimiter);
+app.use('/api/chat', apiLimiter);
 app.use('/invoice', apiLimiter);
+app.use('/api/invoice', apiLimiter);
 app.use('/parts', apiLimiter);
+app.use('/api/parts', apiLimiter);
 
-// Routes
-app.use('/chat', chatRoutes);
-app.use('/parts', partsRoutes);
-app.use('/order', ordersRoutes);
-app.use('/orders', ordersRoutes);
+// Specific upload route timeout middleware (5 minutes for heavy batch datasets)
+const uploadTimeoutMiddleware = (req, res, next) => {
+  req.setTimeout(5 * 60 * 1000);
+  res.setTimeout(5 * 60 * 1000);
+  next();
+};
 
-app.use('/auth', authRoutes);
+app.use('/api/admin/upload-stock', uploadTimeoutMiddleware);
+app.use('/api/admin/upload-price', uploadTimeoutMiddleware);
+app.use('/api/service-records/upload', uploadTimeoutMiddleware);
+
+// ----------------------------------------------------------------------------
+// Health, Readiness & Version Endpoints
+// ----------------------------------------------------------------------------
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).json({
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'degraded',
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+      error: err.message
+    });
+  }
+});
+
+app.get('/readiness', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).json({ ready: true });
+  } catch (err) {
+    res.status(503).json({ ready: false, error: err.message });
+  }
+});
+
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: '1.0.0',
+    minAppVersion: '1.0.0',
+    latestVersion: '1.0.0'
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Canonical API Routes (/api/*)
+// ----------------------------------------------------------------------------
 app.use('/api/auth', authRoutes);
-app.use('/invoice', invoiceRoutes);
 app.use('/api/invoice', invoiceRoutes);
-app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/service-records', serviceRecordsRoutes);
+app.use('/api/parts', partsRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/chat', chatRoutes);
+
+// ----------------------------------------------------------------------------
+// Versioned Routes (/api/v1/*)
+// ----------------------------------------------------------------------------
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/invoice', invoiceRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/service-records', serviceRecordsRoutes);
+app.use('/api/v1/parts', partsRoutes);
+app.use('/api/v1/orders', ordersRoutes);
+app.use('/api/v1/chat', chatRoutes);
+
+// ----------------------------------------------------------------------------
+// Backward-compatible Legacy Aliases (Preserves existing apps in the field)
+// ----------------------------------------------------------------------------
+app.use('/auth', authRoutes);
+app.use('/invoice', invoiceRoutes);
+app.use('/admin', adminRoutes);
+app.use('/order', ordersRoutes);
+app.use('/orders', ordersRoutes);
+app.use('/parts', partsRoutes);
+app.use('/chat', chatRoutes);
 
 const path = require('path');
 app.get('/', (req, res) => {
@@ -146,8 +235,9 @@ const server = app.listen(PORT, () => {
   setupDatabaseTriggerAndListener();
 });
 
-// Configure generous server timeouts for large file uploads
-server.timeout = 10 * 60 * 1000; // 10 minutes
+// Default HTTP timeout (30 seconds) to prevent slowloris/resource starvation
+// (Bulk uploads are granted extended 5-minute timeouts via uploadTimeoutMiddleware)
+server.timeout = 30 * 1000;
 server.keepAliveTimeout = 65000;
 
 // Setup Real-time WebSocket Broadcaster

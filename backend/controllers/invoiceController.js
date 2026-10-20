@@ -2,6 +2,7 @@ const { pool } = require('../config/neondb');
 const { generatePDF } = require('../services/pdfService');
 const { uploadToCloudinary } = require('../services/cloudinaryService');
 const { sendEmail } = require('../services/emailService');
+const { escapeLikePattern } = require('../utils/sqlUtils');
 
 const formatInvoice = (inv) => ({
   id: String(inv.id),
@@ -126,9 +127,8 @@ const createInvoice = async (req, res) => {
     // Mutate the local object for PDF generation
     savedInvoice.invoice_number = invoiceNumber;
 
-    // Update real invoice number in DB (non-blocking)
-    pool.query('UPDATE invoices SET invoice_number = $1 WHERE id = $2', [invoiceNumber, savedId])
-      .catch(err => console.error('DB Update Error (Invoice Number):', err));
+    // Update real invoice number in DB synchronously to ensure atomic consistency
+    await pool.query('UPDATE invoices SET invoice_number = $1 WHERE id = $2', [invoiceNumber, savedId]);
       
     console.timeEnd('Database Insert & Invoice Number Generation');
 
@@ -209,7 +209,7 @@ const getInvoices = async (req, res) => {
     }
 
     if (search) {
-      params.push(`%${search}%`);
+      params.push(`%${escapeLikePattern(search)}%`);
       conditions.push(`(customer_name ILIKE $${params.length} OR invoice_number ILIKE $${params.length} OR prepared_by ILIKE $${params.length})`);
     }
 

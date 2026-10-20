@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
   bool _isAuthenticated = false;
   bool _isLoading = false;
@@ -25,15 +27,30 @@ class AuthProvider extends ChangeNotifier {
   String? get token => _token;
   String? get errorMessage => _errorMessage;
 
-  /// Restores session from local storage on startup
+  /// Restores session securely on startup
   Future<void> checkAuthStatus() async {
     _isLoading = true;
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString('admin_token');
       _adminEmail = prefs.getString('admin_email');
+
+      // 1. Read token securely from Keychain / DPAPI
+      try {
+        _token = await _secureStorage.read(key: 'admin_token');
+      } catch (_) {}
+
+      // 2. Migration fallback from legacy plaintext SharedPreferences
+      if (_token == null || _token!.isEmpty) {
+        final legacyToken = prefs.getString('admin_token');
+        if (legacyToken != null && legacyToken.isNotEmpty) {
+          _token = legacyToken;
+          try {
+            await _secureStorage.write(key: 'admin_token', value: legacyToken);
+          } catch (_) {}
+        }
+      }
       
       if (_token != null && _token!.isNotEmpty) {
         _isAuthenticated = true;
@@ -56,16 +73,21 @@ class AuthProvider extends ChangeNotifier {
     try {
       final result = await _apiService.login(email, password);
       
-      final token = result['token'];
+      final token = result['token']?.toString() ?? '';
       final adminInfo = result['admin'];
-      final adminEmail = adminInfo != null ? adminInfo['email'] : email;
+      final adminEmail = adminInfo != null ? adminInfo['email']?.toString() : email;
+
+      // Persist token in encrypted secure storage with fallback
+      try {
+        await _secureStorage.write(key: 'admin_token', value: token);
+      } catch (_) {}
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('admin_token', token);
-      await prefs.setString('admin_email', adminEmail);
+      await prefs.setString('admin_email', adminEmail ?? email);
 
       _token = token;
-      _adminEmail = adminEmail;
+      _adminEmail = adminEmail ?? email;
       _isAuthenticated = true;
       _isLoading = false;
       notifyListeners();
@@ -84,6 +106,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _secureStorage.delete(key: 'admin_token');
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('admin_token');
       await prefs.remove('admin_email');
@@ -107,6 +130,7 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = false;
       _sessionExpired = true;
       
+      _secureStorage.delete(key: 'admin_token').catchError((_) {});
       SharedPreferences.getInstance().then((prefs) {
         prefs.remove('admin_token');
         prefs.remove('admin_email');

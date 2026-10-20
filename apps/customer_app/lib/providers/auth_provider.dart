@@ -204,4 +204,52 @@ class AuthProvider extends ChangeNotifier {
     _sessionExpired = false;
     notifyListeners();
   }
+
+  /// Request password reset verification code to technician email
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      return await _apiService.forgotPassword(email);
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Complete password reset using token and new password
+  Future<Map<String, dynamic>> resetPassword(String token, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      return await _apiService.resetPassword(token, newPassword);
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Change password for currently logged in technician
+  Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      return await _apiService.changePassword(currentPassword, newPassword);
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

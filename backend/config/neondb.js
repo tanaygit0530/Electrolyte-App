@@ -11,10 +11,16 @@ if (!connectionString) {
 
 const isLocalhost = connectionString && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'));
 
+// In production, enforce certificate validation to protect against MITM attacks.
+// Allow override via DB_SSL_REJECT_UNAUTHORIZED if explicitly set.
+const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED !== undefined
+  ? process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true'
+  : (process.env.NODE_ENV === 'production');
+
 const pool = new Pool({
   connectionString: connectionString,
   ssl: isLocalhost ? false : {
-    rejectUnauthorized: false // Cloud PostgreSQL requires SSL connection
+    rejectUnauthorized
   }
 });
 

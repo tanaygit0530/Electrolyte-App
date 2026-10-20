@@ -21,7 +21,10 @@ class DashboardProvider extends ChangeNotifier {
 
   WebSocketChannel? _wsChannel;
   bool _isConnectingWs = false;
+  bool _isWsConnected = false;
+  int _wsReconnectAttempts = 0;
   Timer? _wsReconnectTimer;
+  Timer? _fallbackPollingTimer;
   bool _disposed = false;
 
   DashboardProvider(this._apiService);
@@ -32,6 +35,7 @@ class DashboardProvider extends ChangeNotifier {
   DateTime? get lastPriceUpload => _lastPriceUpload;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get isWsConnected => _isWsConnected;
 
   List<UploadHistory> get stockHistory => _stockHistory;
   List<UploadHistory> get priceHistory => _priceHistory;
@@ -40,9 +44,13 @@ class DashboardProvider extends ChangeNotifier {
   void closeWebSocket() {
     _wsReconnectTimer?.cancel();
     _wsReconnectTimer = null;
+    _fallbackPollingTimer?.cancel();
+    _fallbackPollingTimer = null;
     _wsChannel?.sink.close();
     _wsChannel = null;
     _isConnectingWs = false;
+    _isWsConnected = false;
+    _wsReconnectAttempts = 0;
   }
 
   /// Initializes secure WebSocket connection for dashboard telemetry updates
@@ -61,6 +69,7 @@ class DashboardProvider extends ChangeNotifier {
       if (token == null || token.isEmpty) {
         debugPrint('Dashboard WebSocket initialization skipped: Missing token');
         _isConnectingWs = false;
+        _isWsConnected = false;
         return;
       }
 
@@ -72,14 +81,24 @@ class DashboardProvider extends ChangeNotifier {
 
       _wsChannel!.stream.listen(
         (message) {
+          if (!_isWsConnected) {
+            _isWsConnected = true;
+            _wsReconnectAttempts = 0;
+            _stopFallbackPolling();
+            notifyListeners();
+          }
           _handleWsMessage(message);
         },
         onError: (err) {
           debugPrint('Dashboard WebSocket encountered error: $err');
+          _isWsConnected = false;
+          notifyListeners();
           _scheduleWsReconnect();
         },
         onDone: () {
           debugPrint('Dashboard WebSocket connection closed.');
+          _isWsConnected = false;
+          notifyListeners();
           _scheduleWsReconnect();
         },
         cancelOnError: true,
@@ -88,6 +107,8 @@ class DashboardProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Failed to initialize Dashboard WebSocket connection: $e');
       _isConnectingWs = false;
+      _isWsConnected = false;
+      notifyListeners();
       _scheduleWsReconnect();
     }
   }
@@ -119,10 +140,40 @@ class DashboardProvider extends ChangeNotifier {
     
     _wsChannel = null;
     _wsReconnectTimer?.cancel();
-    _wsReconnectTimer = Timer(const Duration(seconds: 5), () {
-      debugPrint('Attempting to reconnect Dashboard WebSocket...');
-      initWebSocket();
+
+    // Exponential backoff: 2s, 4s, 8s, 16s, max 30s
+    final backoffDelays = [2, 4, 8, 16, 30];
+    final delaySeconds = backoffDelays[_wsReconnectAttempts < backoffDelays.length 
+        ? _wsReconnectAttempts 
+        : backoffDelays.length - 1];
+    _wsReconnectAttempts++;
+
+    // Fall back to periodic HTTP polling if disconnected
+    _startFallbackPolling();
+
+    debugPrint('Scheduling WebSocket reconnect attempt #$_wsReconnectAttempts in ${delaySeconds}s...');
+    _wsReconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      if (!_disposed) {
+        debugPrint('Attempting to reconnect Dashboard WebSocket (attempt #$_wsReconnectAttempts)...');
+        initWebSocket();
+      }
     });
+  }
+
+  void _startFallbackPolling() {
+    if (_fallbackPollingTimer != null || _disposed) return;
+    debugPrint('Enabling HTTP polling fallback (every 30s) while WebSocket is reconnecting');
+    _fallbackPollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!_isWsConnected && !_disposed) {
+        debugPrint('HTTP fallback polling: refreshing dashboard stats');
+        fetchDashboardStats();
+      }
+    });
+  }
+
+  void _stopFallbackPolling() {
+    _fallbackPollingTimer?.cancel();
+    _fallbackPollingTimer = null;
   }
 
   /// Loads card aggregates from the database

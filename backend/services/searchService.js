@@ -12,6 +12,7 @@ const { parseQuery } = require("../utils/queryParser");
 const logger = require("../utils/logger");
 const { correctSpelling } = require("../utils/spellCorrector");
 const { loadVocabulary } = require("./vocabularyService");
+const { escapeLikePattern } = require("../utils/sqlUtils");
 
 async function searchProducts(userMessage) {
   if (typeof userMessage !== "string" || !userMessage.trim()) {
@@ -53,7 +54,7 @@ async function searchProducts(userMessage) {
     (_, index) => `normalized_name ILIKE $${index + 1}`
   );
 
-  const params = uniqueTokens.map((token) => `%${token}%`);
+  const params = uniqueTokens.map((token) => `%${escapeLikePattern(token)}%`);
 
   const sql = `
 WITH normalized_products AS (

@@ -8,6 +8,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { JWT_SECRET } = require('../config/env');
 const { invalidateVocabulary } = require('../services/vocabularyService');
+const { escapeLikePattern } = require('../utils/sqlUtils');
 
 // JWT Admin Login
 const login = async (req, res) => {
@@ -18,11 +19,39 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Please enter an email and password' });
     }
 
-    const adminQuery = await pool.query('SELECT * FROM admins WHERE email = $1', [email.toLowerCase().trim()]);
-    const admin = adminQuery.rows[0];
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Primary lookup: users table with role = 'admin'
+    let admin = null;
+    try {
+      const userRes = await pool.query(
+        "SELECT id, email, password_hash, role, is_active FROM users WHERE LOWER(email) = $1 AND role = 'admin'",
+        [cleanEmail]
+      );
+      admin = userRes.rows[0];
+    } catch (_) {}
+
+    // 2. Backward compatibility fallback: admins table
+    if (!admin) {
+      const legacyQuery = await pool.query('SELECT * FROM admins WHERE LOWER(email) = $1', [cleanEmail]);
+      const legacyAdmin = legacyQuery.rows[0];
+      if (legacyAdmin) {
+        admin = {
+          id: legacyAdmin.id,
+          email: legacyAdmin.email,
+          password_hash: legacyAdmin.password_hash,
+          role: 'admin',
+          is_active: true
+        };
+      }
+    }
 
     if (!admin) {
       return res.status(401).json({ error: 'No admin found with this email' });
+    }
+
+    if (admin.is_active === false) {
+      return res.status(403).json({ error: 'This admin account has been deactivated.' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, admin.password_hash);
@@ -34,7 +63,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: 'admin' },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '12h' }
     );
 
     res.json({
@@ -698,14 +727,14 @@ const getFilteredInvoicesQuery = (queryParams) => {
   // 4. Customer Search
   if (customerSearch) {
     conditions.push(`customer_name ILIKE $${paramIdx}`);
-    params.push(`%${customerSearch}%`);
+    params.push(`%${escapeLikePattern(customerSearch)}%`);
     paramIdx++;
   }
   
   // 5. Invoice Search
   if (invoiceSearch) {
     conditions.push(`invoice_number ILIKE $${paramIdx}`);
-    params.push(`%${invoiceSearch}%`);
+    params.push(`%${escapeLikePattern(invoiceSearch)}%`);
     paramIdx++;
   }
   

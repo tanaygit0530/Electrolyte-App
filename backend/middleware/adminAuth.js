@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/env');
+const { pool } = require('../config/neondb');
 
-const adminAuth = (req, res, next) => {
+const adminAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     if (!authHeader) {
@@ -20,6 +21,16 @@ const adminAuth = (req, res, next) => {
 
     if (decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden: Requires admin privileges.' });
+    }
+
+    // Verify admin is active (checks both users table and legacy admins table)
+    try {
+      const activeCheck = await pool.query('SELECT is_active FROM users WHERE id = $1', [decoded.id]);
+      if (activeCheck.rows.length > 0 && activeCheck.rows[0].is_active === false) {
+        return res.status(403).json({ error: 'Admin account has been deactivated. Access revoked.' });
+      }
+    } catch (dbErr) {
+      console.warn('Admin active check DB warning:', dbErr.message);
     }
 
     // Attach admin info to request

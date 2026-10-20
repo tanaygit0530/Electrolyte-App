@@ -651,6 +651,12 @@ async function processServiceFileJob(jobId, filePath, originalName, uploadedBy) 
             const { isWithin60, parsedDate, displayDate } = evaluateEndDate60Days(rawEndDate, nowMs, sixtyDaysAgoMs, currentYear);
             if (isWithin60) return; // already inserted in pass 1
 
+            // Operational retention policy: only ingest historical records within 180 days to protect storage quota
+            const oneEightyDaysAgoMs = nowMs - (180 * 24 * 60 * 60 * 1000);
+            if (parsedDate && parsedDate.getTime() < oneEightyDaysAgoMs) {
+              return; // Skip ancient records older than 180 days
+            }
+
             const rec = extractFullRecord(vals, colMap, serialStr, parsedDate, displayDate);
             histBatch.push(rec);
 

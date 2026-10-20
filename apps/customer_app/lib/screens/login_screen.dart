@@ -57,6 +57,181 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog(BuildContext context) {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    final codeCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    bool codeSent = false;
+    bool isSubmitting = false;
+    String? localError;
+
+    showDialog(
+      context: context,
+      barrierDismissible: !isSubmitting,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return AlertDialog(
+            backgroundColor: isDark ? AppTheme.darkCardColor : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.lock_reset, color: AppTheme.primaryYellow),
+                const SizedBox(width: 10),
+                Text(
+                  codeSent ? 'Enter Reset Code' : 'Reset Password',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (localError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        localError!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                  if (!codeSent) ...[
+                    const Text(
+                      'Enter your registered technician email to receive a password reset code.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email Address',
+                        prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ] else ...[
+                    const Text(
+                      'Enter the 6-digit code sent to your email and your new password.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: codeCtrl,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        labelText: '6-digit Reset Code',
+                        prefixIcon: const Icon(Icons.pin, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: newPassCtrl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'New Password (min 8 chars)',
+                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryYellow,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        setDialogState(() {
+                          isSubmitting = true;
+                          localError = null;
+                        });
+
+                        try {
+                          if (!codeSent) {
+                            final email = emailCtrl.text.trim();
+                            if (email.isEmpty || !email.contains('@')) {
+                              setDialogState(() {
+                                localError = 'Please enter a valid email address.';
+                                isSubmitting = false;
+                              });
+                              return;
+                            }
+                            await auth.forgotPassword(email);
+                            setDialogState(() {
+                              codeSent = true;
+                              isSubmitting = false;
+                            });
+                          } else {
+                            final code = codeCtrl.text.trim();
+                            final newPass = newPassCtrl.text;
+                            if (code.isEmpty) {
+                              setDialogState(() {
+                                localError = 'Please enter the verification code.';
+                                isSubmitting = false;
+                              });
+                              return;
+                            }
+                            if (newPass.length < 8) {
+                              setDialogState(() {
+                                localError = 'New password must be at least 8 characters.';
+                                isSubmitting = false;
+                              });
+                              return;
+                            }
+                            await auth.resetPassword(code, newPass);
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Password has been reset successfully! You can now log in.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          }
+                        } catch (err) {
+                          setDialogState(() {
+                            localError = err.toString().replaceAll('Exception: ', '');
+                            isSubmitting = false;
+                          });
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      )
+                    : Text(codeSent ? 'Update Password' : 'Send Reset Code'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -254,7 +429,30 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 8),
+
+                      // Forgot Password Action
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => _showForgotPasswordDialog(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                              color: AppTheme.primaryYellow,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
                       // Sign In Button
                       SizedBox(

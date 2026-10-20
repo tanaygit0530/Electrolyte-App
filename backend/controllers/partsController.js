@@ -1,4 +1,5 @@
 const { pool } = require('../config/neondb');
+const { escapeLikePattern } = require('../utils/sqlUtils');
 
 // Map NeonDB product row to match legacy format for the Flutter app
 const formatComponent = (prod) => ({
@@ -55,7 +56,7 @@ exports.searchParts = async (req, res) => {
   }
 
   try {
-    const queryStr = `%${q}%`;
+    const queryStr = `%${escapeLikePattern(q)}%`;
     const result = await pool.query(
       `SELECT * FROM products 
        WHERE word_similarity($1, product_name) > 0.3 
