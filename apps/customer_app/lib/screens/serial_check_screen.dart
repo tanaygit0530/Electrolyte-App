@@ -508,24 +508,41 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
     );
   }
 
-  // --- RESULT VIEW: REPEAT RISK (RED) vs SAFE TO CLOSE (GREEN) ---
+  // --- RESULT VIEW: REPEAT RISK (RED) vs REVIEW NEEDED (AMBER) vs SAFE TO CLOSE (GREEN) ---
   Widget _buildResultView(
     BuildContext context,
     SerialCheckProvider provider,
     bool isDark,
   ) {
     final result = provider.result!;
-    final isRepeatRisk = result.isWithin60Days;
-    final primaryColor = isRepeatRisk
+    final isRepeatRisk = result.isRepeatRisk;
+    final isReviewNeeded = result.isReviewNeeded;
+
+    // Strict 3-state styling: Red for repeat risk, Amber for review required, Green for safe to close
+    final Color primaryColor = isRepeatRisk
         ? const Color(0xFFEF4444)
-        : const Color(0xFF10B981);
+        : (isReviewNeeded
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981));
+
+    final IconData statusIcon = isRepeatRisk
+        ? Icons.warning_amber_rounded
+        : (isReviewNeeded
+            ? Icons.error_outline_rounded
+            : Icons.check_circle_rounded);
+
+    final String statusLabel = isRepeatRisk
+        ? 'REPEAT RISK (≤ 60 DAYS)'
+        : (isReviewNeeded
+            ? 'REVIEW NEEDED'
+            : 'SAFE TO CLOSE (> 60 DAYS)');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header Card with prominent REPEAT RISK / SAFE TO CLOSE status
+          // Header Card with prominent REPEAT RISK / REVIEW / SAFE TO CLOSE status
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -553,9 +570,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isRepeatRisk
-                        ? Icons.warning_amber_rounded
-                        : Icons.check_circle_rounded,
+                    statusIcon,
                     color: primaryColor,
                     size: 58,
                   ),
@@ -573,20 +588,94 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(
-                    isRepeatRisk
-                        ? 'REPEAT RISK (< 60 DAYS)'
-                        : 'SAFE TO CLOSE (> 60 DAYS)',
+                    statusLabel,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 17,
+                      fontSize: 16,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Divider(),
                 const SizedBox(height: 14),
+
+                // Human-readable message from backend
+                if (result.message != null && result.message!.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 6, bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: primaryColor.withValues(alpha: 0.25)),
+                    ),
+                    child: Text(
+                      result.message!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                        color: isDark ? Colors.grey.shade200 : Colors.grey.shade800,
+                      ),
+                    ),
+                  ),
+
+                const Divider(),
+                const SizedBox(height: 10),
+
+                // Days Ago & Last Service Date Pills
+                if (result.daysAgo != null || result.lastServiceDate != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        if (result.daysAgo != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white10 : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.history_toggle_off, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${result.daysAgo} days ago',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (result.lastServiceDate != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white10 : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.event, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Last: ${result.lastServiceDate}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
 
                 // Serial Number badge
                 Row(

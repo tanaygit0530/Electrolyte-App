@@ -11,7 +11,9 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('./config/neondb');
 const { closeBrowser, getBrowser } = require('./services/pdfService');
 const { invalidateVocabulary } = require('./services/vocabularyService');
+const { initRetentionScheduler, stopRetentionScheduler } = require('./services/retentionScheduler');
 const logger = require('./utils/logger');
+
 
 const chatRoutes = require('./routes/chatRoutes');
 const partsRoutes = require('./routes/parts');
@@ -233,6 +235,9 @@ const server = app.listen(PORT, () => {
 
   // Initialize DB Trigger and Real-time listener
   setupDatabaseTriggerAndListener();
+
+  // Initialize automated 60-day service records retention cleanup
+  initRetentionScheduler();
 });
 
 // Default HTTP timeout (30 seconds) to prevent slowloris/resource starvation
@@ -433,15 +438,17 @@ process.on('uncaughtException', (err) => {
   console.error('⚠️ Uncaught Exception detected:', err);
 });
 
-// Clean shutdown listeners to close Puppeteer browser instance
+// Clean shutdown listeners to close Puppeteer browser instance & stop schedulers
 process.on('SIGINT', async () => {
   console.log('Server shutting down...');
+  stopRetentionScheduler();
   await closeBrowser();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('Server terminated');
+  stopRetentionScheduler();
   await closeBrowser();
   process.exit(0);
 });
