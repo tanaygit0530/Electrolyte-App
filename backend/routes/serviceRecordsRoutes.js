@@ -48,4 +48,8 @@ router.get('/job-status/:jobId', adminAuth, serviceRecordsController.getJobStatu
 // Export CSV of found records
 router.get('/export-found', adminAuth, serviceRecordsController.exportFoundCsv);
 
+// Manual 60-day data retention cleanup trigger
+router.post('/cleanup', adminAuth, serviceRecordsController.triggerManualCleanup);
+
 module.exports = router;
+
