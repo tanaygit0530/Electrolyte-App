@@ -3,6 +3,7 @@ const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const logger = require('../utils/logger');
 const { pool } = require('../config/neondb');
 
 /**
@@ -18,7 +19,7 @@ setInterval(() => {
       activeJobs.delete(id);
     }
   }
-}, 600000);
+}, 600000).unref();
 
 /**
  * Timezone-aware calendar days calculation in business timezone (Asia/Kolkata).
@@ -827,11 +828,14 @@ async function processServiceFileJob(jobId, filePath, originalName, uploadedBy) 
  * GET /api/service-records/check/:serialNumber
  */
 exports.checkSerialNumber = async (req, res) => {
+  const startTime = Date.now();
   try {
     const rawSerial = req.params.serialNumber;
     const cleanSerial = normalizeSerialNumber(rawSerial);
 
     if (!cleanSerial) {
+      const duration = Date.now() - startTime;
+      logger.warn(`[checkSerialNumber] Rejected invalid or empty serial in ${duration}ms`);
       return res.status(400).json({ error: 'Valid serial number is required' });
     }
 
@@ -870,9 +874,18 @@ exports.checkSerialNumber = async (req, res) => {
       LIMIT 1;
     `;
 
+    const dbStart = Date.now();
     const result = await pool.query(query, [cleanSerial]);
+    const dbDuration = Date.now() - dbStart;
+
+    // Mask serial number to avoid exposing sensitive PII in logs
+    const maskedSerial = cleanSerial.length > 7
+      ? `${cleanSerial.slice(0, 4)}***${cleanSerial.slice(-3)}`
+      : cleanSerial;
 
     if (result.rows.length === 0) {
+      const totalDuration = Date.now() - startTime;
+      logger.info(`[checkSerialNumber] Serial: ${maskedSerial} -> SAFE TO CLOSE (no prior record, db: ${dbDuration}ms, total: ${totalDuration}ms)`);
       return res.json({
         success: true,
         status: 'SAFE TO CLOSE',
@@ -892,6 +905,8 @@ exports.checkSerialNumber = async (req, res) => {
 
     // Handle invalid date state
     if (!lastServiceDate || isNaN(lastServiceDate.getTime())) {
+      const totalDuration = Date.now() - startTime;
+      logger.warn(`[checkSerialNumber] Serial: ${maskedSerial} -> REVIEW NEEDED (invalid date, db: ${dbDuration}ms, total: ${totalDuration}ms)`);
       return res.json({
         success: true,
         status: 'REVIEW NEEDED',
@@ -920,6 +935,8 @@ exports.checkSerialNumber = async (req, res) => {
 
     // Handle future-dated service record safely
     if (daysAgo !== null && daysAgo < 0) {
+      const totalDuration = Date.now() - startTime;
+      logger.warn(`[checkSerialNumber] Serial: ${maskedSerial} -> REVIEW NEEDED (future date: ${displayDate}, db: ${dbDuration}ms, total: ${totalDuration}ms)`);
       return res.json({
         success: true,
         status: 'REVIEW NEEDED',
@@ -945,8 +962,10 @@ exports.checkSerialNumber = async (req, res) => {
 
     // Exactly 0–60 days inclusive is REPEAT RISK
     const isWithin60Days = (daysAgo !== null && daysAgo >= 0 && daysAgo <= 60);
+    const totalDuration = Date.now() - startTime;
 
     if (isWithin60Days) {
+      logger.info(`[checkSerialNumber] Serial: ${maskedSerial} -> REPEAT RISK (${daysAgo} days ago, db: ${dbDuration}ms, total: ${totalDuration}ms)`);
       return res.json({
         success: true,
         status: 'REPEAT RISK',
@@ -971,6 +990,7 @@ exports.checkSerialNumber = async (req, res) => {
       });
     } else {
       // 61+ days is SAFE TO CLOSE
+      logger.info(`[checkSerialNumber] Serial: ${maskedSerial} -> SAFE TO CLOSE (${daysAgo} days ago, db: ${dbDuration}ms, total: ${totalDuration}ms)`);
       return res.json({
         success: true,
         status: 'SAFE TO CLOSE',
@@ -995,7 +1015,8 @@ exports.checkSerialNumber = async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Check Serial Number Error:', error);
+    const totalDuration = Date.now() - startTime;
+    logger.error(`[checkSerialNumber] Error after ${totalDuration}ms:`, error.message);
     return res.status(500).json({ error: 'Internal Server Error checking serial number' });
   }
 };
