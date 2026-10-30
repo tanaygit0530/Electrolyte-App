@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -12,35 +13,71 @@ class SerialCheckScreen extends StatefulWidget {
 }
 
 class _SerialCheckScreenState extends State<SerialCheckScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   final TextEditingController _textController = TextEditingController();
-  final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-  );
+  late final MobileScannerController _scannerController;
 
   bool _isTorchOn = false;
+  bool _isProcessingScan = false;
+  bool _hasDetectionTimedOut = false;
+  Timer? _noBarcodeTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+      autoStart: false,
+    );
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabChange);
+
+    // Initialize camera and start 15s detection timer for Live Scan tab
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _tabController.index == 0) {
+        _startLiveScan();
+      }
+    });
   }
 
   void _handleTabChange() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 0) {
-      _scannerController.start();
+      final provider = context.read<SerialCheckProvider>();
+      if (provider.result == null) {
+        _startLiveScan();
+      }
     } else {
-      _scannerController.stop();
+      _stopLiveScan();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_scannerController.value.isInitialized) return;
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _stopLiveScan();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_tabController.index == 0 && mounted) {
+        final provider = context.read<SerialCheckProvider>();
+        if (provider.result == null &&
+            !_hasDetectionTimedOut &&
+            !_isProcessingScan) {
+          _startLiveScan();
+        }
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cancelDetectionTimer();
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _textController.dispose();
@@ -48,16 +85,98 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
     super.dispose();
   }
 
-  void _onBarcodeScanned(BarcodeCapture capture) {
+  /// Start camera stream and 15-second barcode detection countdown
+  void _startLiveScan() async {
+    _cancelDetectionTimer();
+    if (mounted) {
+      setState(() {
+        _hasDetectionTimedOut = false;
+        _isProcessingScan = false;
+      });
+    }
+
+    _startDetectionTimer();
+
+    try {
+      if (!_scannerController.value.isRunning) {
+        await _scannerController.start();
+      }
+    } catch (e) {
+      debugPrint('[SerialCheckScreen] Error starting camera: $e');
+    }
+  }
+
+  /// Stop camera stream and cancel any pending detection timers
+  void _stopLiveScan() {
+    _cancelDetectionTimer();
+    try {
+      if (_scannerController.value.isRunning) {
+        _scannerController.stop();
+      }
+    } catch (_) {}
+  }
+
+  /// 15-second detection window timer
+  void _startDetectionTimer() {
+    _cancelDetectionTimer();
+    _noBarcodeTimer = Timer(const Duration(seconds: 15), () {
+      if (!mounted) return;
+      if (_tabController.index == 0 && !_isProcessingScan) {
+        final provider = context.read<SerialCheckProvider>();
+        if (provider.result == null && !provider.isLoading) {
+          setState(() {
+            _hasDetectionTimedOut = true;
+          });
+          // Pause camera when 15 seconds expire without a detection
+          _scannerController.stop();
+        }
+      }
+    });
+  }
+
+  void _cancelDetectionTimer() {
+    _noBarcodeTimer?.cancel();
+    _noBarcodeTimer = null;
+  }
+
+  /// Handles barcode detection from camera stream
+  void _onBarcodeScanned(BarcodeCapture capture) async {
+    if (_isProcessingScan || _hasDetectionTimedOut) return;
+
     final provider = context.read<SerialCheckProvider>();
     if (provider.isLoading || provider.result != null) return;
+    if (capture.barcodes.isEmpty) return;
 
-    if (capture.barcodes.isNotEmpty) {
-      final barcode = capture.barcodes.first;
-      final rawValue = barcode.rawValue;
-      if (rawValue != null && rawValue.trim().isNotEmpty) {
-        provider.checkSerial(rawValue);
-      }
+    final barcode = capture.barcodes.first;
+    final rawValue = barcode.rawValue;
+    if (rawValue == null || rawValue.trim().isEmpty) return;
+
+    _cancelDetectionTimer();
+    setState(() {
+      _isProcessingScan = true;
+    });
+
+    // Pause camera during database verification to prevent overlapping scans
+    try {
+      await _scannerController.stop();
+    } catch (_) {}
+
+    await provider.checkSerial(rawValue);
+
+    if (mounted) {
+      setState(() {
+        _isProcessingScan = false;
+      });
+    }
+  }
+
+  /// Reset provider and restart scanner without requiring app restart
+  void _resetAll() {
+    final provider = context.read<SerialCheckProvider>();
+    provider.reset();
+    _textController.clear();
+    if (_tabController.index == 0) {
+      _startLiveScan();
     }
   }
 
@@ -93,10 +212,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Reset',
-            onPressed: () {
-              provider.reset();
-              _textController.clear();
-            },
+            onPressed: _resetAll,
           ),
         ],
         bottom: provider.result != null
@@ -172,6 +288,66 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
         MobileScanner(
           controller: _scannerController,
           onDetect: _onBarcodeScanned,
+          errorBuilder: (context, error, child) {
+            return Center(
+              child: Container(
+                margin: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCardColor : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade400),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.no_photography_outlined,
+                      color: Color(0xFFEF4444),
+                      size: 48,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Camera Unavailable',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error.errorDetails?.message ??
+                          'Camera permission was denied or camera is unavailable. Please grant permission or use manual entry.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            _tabController.animateTo(2);
+                          },
+                          child: const Text('Manual Entry'),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: _startLiveScan,
+                          child: const Text('Retry Camera'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
         // Darkened overlay with cutout frame
         CustomPaint(
@@ -212,27 +388,223 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
             ),
           ),
         ),
-        // Error banner if any
-        if (provider.errorMessage != null)
-          Positioned(
-            bottom: 24,
-            left: 20,
-            right: 20,
+
+        // Friendly 15-second Detection Timeout Overlay
+        if (_hasDetectionTimedOut && provider.errorMessage == null && !provider.isLoading)
+          Center(
             child: Container(
-              padding: const EdgeInsets.all(14),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(12),
+                color: isDark ? AppTheme.darkCardColor : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      provider.errorMessage!,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryYellow.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(
+                      Icons.search_off_rounded,
+                      color: AppTheme.primaryYellow,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'No Barcode Detected',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No barcode detected. Adjust the camera or try manual entry.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            _cancelDetectionTimer();
+                            setState(() {
+                              _hasDetectionTimedOut = false;
+                            });
+                            _tabController.animateTo(2);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text('Manual Entry'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _startLiveScan,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Retry Scan'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Friendly Error Banner with Retry & Manual Entry actions
+        if (provider.errorMessage != null && !provider.isLoading)
+          Positioned(
+            bottom: 20,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.error_outline_rounded,
+                          color: Color(0xFFEF4444),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Verification Issue',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              provider.errorMessage!,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.35,
+                                color: isDark
+                                    ? Colors.grey.shade300
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            provider.clearError();
+                            _startLiveScan();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text('Scan Again', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            provider.clearError();
+                            _tabController.animateTo(2);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text('Manual Entry', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            if (provider.currentSerial != null &&
+                                provider.currentSerial!.isNotEmpty) {
+                              await provider.retry();
+                            } else {
+                              provider.clearError();
+                              _startLiveScan();
+                            }
+                          },
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Retry', style: TextStyle(fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -341,6 +713,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
                         fontSize: 13,
                       ),
                     ),
+                  ),
+                  TextButton(
+                    onPressed: () => provider.retry(),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -498,6 +874,10 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
                         fontSize: 13,
                       ),
                     ),
+                  ),
+                  TextButton(
+                    onPressed: () => provider.retry(),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -786,10 +1166,7 @@ class _SerialCheckScreenState extends State<SerialCheckScreen>
           SizedBox(
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: () {
-                provider.reset();
-                _textController.clear();
-              },
+              onPressed: _resetAll,
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text(
                 'Verify Another Serial Number',

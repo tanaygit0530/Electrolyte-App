@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode, kDebugMode, debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/spare_part.dart';
@@ -286,18 +287,41 @@ class SharedApiService {
   }
 
   /// Check if a serial number has a service record within the last 60 days
-  Future<Map<String, dynamic>> checkSerialNumber(String serialNumber) async {
+  Future<Map<String, dynamic>> checkSerialNumber(String serialNumber, {Duration? timeout}) async {
     final clean = Uri.encodeComponent(serialNumber.trim());
-    final response = await _get('$baseUrl/api/service-records/check/$clean');
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return json.decode(response.body) as Map<String, dynamic>;
-    } else {
-      try {
-        final err = json.decode(response.body);
-        throw Exception(err['error'] ?? 'Failed to check serial number');
-      } catch (_) {
-        throw Exception('Server returned status ${response.statusCode}');
+    final stopwatch = Stopwatch()..start();
+    final url = '$baseUrl/api/service-records/check/$clean';
+    try {
+      final response = await _get(url, timeout: timeout);
+      stopwatch.stop();
+      if (kDebugMode) {
+        debugPrint('[SharedApiService] GET /api/service-records/check/ -> ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
       }
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        try {
+          final err = json.decode(response.body);
+          throw Exception(err['error'] ?? 'Failed to check serial number');
+        } catch (e) {
+          if (e is Exception && !e.toString().contains('FormatException')) {
+            rethrow;
+          }
+          throw Exception('Server returned status ${response.statusCode}');
+        }
+      }
+    } on TimeoutException {
+      stopwatch.stop();
+      if (kDebugMode) {
+        debugPrint('[SharedApiService] GET /api/service-records/check/ timed out after ${stopwatch.elapsedMilliseconds}ms');
+      }
+      throw TimeoutException('Verification request timed out. Please check your network connection and retry.');
+    } catch (e) {
+      stopwatch.stop();
+      if (kDebugMode) {
+        debugPrint('[SharedApiService] GET /api/service-records/check/ failed in ${stopwatch.elapsedMilliseconds}ms: $e');
+      }
+      rethrow;
     }
   }
 
