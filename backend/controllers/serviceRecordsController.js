@@ -158,23 +158,23 @@ function buildNormalizedColMap(headers) {
 
 
   return {
-    case: getColIdx('casenumber', 'case', 'caseno', 'workordernumber', 'workorderid'),
-    createdDate: getColIdx('createddate', 'date', 'servicedate', 'calldate'),
-    workOrder: getColIdx('workorderlineitemnumber', 'workorderlineitem', 'workorder', 'wolineitem', 'lineitem'),
+    case: getColIdx('caseid', 'casenumber', 'case', 'caseno', 'workordernumber', 'workorderid', 'sfcasenumber'),
+    createdDate: getColIdx('createdat', 'createddate', 'servicedate', 'calldate', 'date'),
+    workOrder: getColIdx('ticketid', 'ticketno', 'ticketnumber', 'workorderlineitemnumber', 'workorderlineitem', 'workorder', 'wolineitem', 'lineitem', 'ticket'),
     customer: getColIdx('customername', 'customer', 'clientname'),
-    territory: getColIdx('serviceterritoryname', 'serviceterritory', 'territory'),
+    territory: getColIdx('serviceterritoryname', 'serviceterritory', 'partnername', 'territory'),
     street: getColIdx('street', 'address'),
     city: getColIdx('city'),
     state: getColIdx('stateprovince', 'state'),
-    zip: getColIdx('zippostalcode', 'zipcode', 'zip', 'postalcode'),
+    zip: getColIdx('pincode', 'pin', 'zippostalcode', 'zipcode', 'zip', 'postalcode'),
     complaint: getColIdx('customercomplaint', 'complaint', 'issue', 'symptom'),
-    status: getColIdx('wostatus', 'status', 'workorderstatus'),
+    status: getColIdx('ticketstatus', 'wostatus', 'status', 'workorderstatus'),
     symptom: getColIdx('symptom'),
     defect: getColIdx('defect'),
     repair: getColIdx('repair', 'repairaction', 'resolution', 'actiontaken'),
-    endDate: getColIdx('enddate', 'closeddate', 'workordercloseddate', 'servicedate', 'completiondate'),
+    endDate: getColIdx('updatedat', 'enddate', 'closeddate', 'workordercloseddate', 'servicedate', 'completiondate', 'closedat'),
     days: getColIdx('days'),
-    prodCode: getColIdx('productcode', 'partcode', 'itemcode'),
+    prodCode: getColIdx('fgcode', 'productcode', 'partcode', 'itemcode'),
     prodName: getColIdx('productname', 'product', 'itemname'),
     prodDesc: getColIdx('productdescription', 'description'),
     prodType: getColIdx('producttype'),
@@ -184,12 +184,12 @@ function buildNormalizedColMap(headers) {
     lineItemStatus: getColIdx('lineitemstatus'),
     sdr: getColIdx('sdrstatus'),
     invoiceDate: getColIdx('invoicedate'),
-    techName: getColIdx('technicianname', 'technician', 'techname', 'engineer'),
+    techName: getColIdx('subpartnername', 'technicianname', 'technician', 'techname', 'engineer', 'assignee'),
     techRemarks: getColIdx('technicianremarks', 'remarks'),
-    serial: getColIdx('serialno', 'serialnumber', 'serial', 'productserialnumber', 'barcode'),
-    replSerial: getColIdx('productserialnumberreplacement', 'replacementserial', 'replacementserialno'),
+    serial: getColIdx('serialnumber', 'serialno', 'serial', 'productserialnumber', 'barcode'),
+    replSerial: getColIdx('productserialnumberreplacement', 'replacementserial', 'replacementserialno', 'replacementserialnumber'),
     resolution: getColIdx('typeofresolution'),
-    closedDate: getColIdx('workordercloseddate', 'closeddate')
+    closedDate: getColIdx('workordercloseddate', 'closeddate', 'updatedat')
   };
 }
 
